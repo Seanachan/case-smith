@@ -1,0 +1,20 @@
+# CaseSmith domain config 範例。
+# 三層 fallback:exact("TABLE.COL" 精確匹配) > pattern(fnmatch 萬用字元)
+# > 型別預設(seed_planner.py 內建,依 DB2 型別)。
+# 欄名一律通用假名,非任何真實系統。
+
+exact:
+  T_ORDER.STATUS_CD: "O"
+  T_CUSTOMER.COUNTRY_CD: "TW"
+
+pattern:
+  # fnmatch 萬用字元,依「表.欄」比對
+  "*.STATUS_CD": "A"
+  "*.LOGIN_NM": "pattern:[A-Z]{8}"
+  "*.ZIP_CD": "pattern:[0-9]{8}"
+
+# 信任閘門用(snapshot 比對時忽略,防時間戳造成假紅燈);目前只要能載入
+ignore_in_snapshot:
+  - "*.CREATED_AT"
+  - "*.UPDATED_AT"
+  - T_ORDER.LAST_LOGIN_TS

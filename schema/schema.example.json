@@ -1,0 +1,89 @@
+{
+  "dialect": "db2",
+  "source": "ddl2json.mjs",
+  "tables": [
+    {
+      "name": "T_CUSTOMER",
+      "schema": "APP",
+      "columns": [
+        {"name": "CUST_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "CUST_NM", "type": "VARCHAR(60)", "nullable": false, "default": null, "identity": false},
+        {"name": "COUNTRY_CD", "type": "CHAR(2)", "nullable": true, "default": null, "identity": false}
+      ],
+      "primary_key": ["CUST_ID"],
+      "foreign_keys": [],
+      "unique": []
+    },
+    {
+      "name": "T_PRODUCT",
+      "schema": "APP",
+      "columns": [
+        {"name": "PRODUCT_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "PRODUCT_NM", "type": "VARCHAR(80)", "nullable": false, "default": null, "identity": false},
+        {"name": "UNIT_PRICE", "type": "DECIMAL(12,2)", "nullable": false, "default": null, "identity": false}
+      ],
+      "primary_key": ["PRODUCT_ID"],
+      "foreign_keys": [],
+      "unique": []
+    },
+    {
+      "name": "T_ORDER",
+      "schema": "APP",
+      "columns": [
+        {"name": "ORDER_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "CUST_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "STATUS_CD", "type": "CHAR(1)", "nullable": false, "default": null, "identity": false},
+        {"name": "ORDER_DT", "type": "DATE", "nullable": true, "default": null, "identity": false}
+      ],
+      "primary_key": ["ORDER_ID"],
+      "foreign_keys": [
+        {"name": "FK_ORDER_CUST", "columns": ["CUST_ID"], "ref_table": "T_CUSTOMER", "ref_columns": ["CUST_ID"]}
+      ],
+      "unique": []
+    },
+    {
+      "name": "T_ORDER_ITEM",
+      "schema": "APP",
+      "columns": [
+        {"name": "ORDER_ITEM_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "ORDER_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "PRODUCT_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "QTY", "type": "INTEGER", "nullable": false, "default": null, "identity": false}
+      ],
+      "primary_key": ["ORDER_ITEM_ID"],
+      "foreign_keys": [
+        {"name": "FK_ITEM_ORDER", "columns": ["ORDER_ID"], "ref_table": "T_ORDER", "ref_columns": ["ORDER_ID"]},
+        {"name": "FK_ITEM_PRODUCT", "columns": ["PRODUCT_ID"], "ref_table": "T_PRODUCT", "ref_columns": ["PRODUCT_ID"]}
+      ],
+      "unique": []
+    },
+    {
+      "name": "T_ACCOUNT",
+      "schema": "APP",
+      "columns": [
+        {"name": "ACCOUNT_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "PROFILE_ID", "type": "DECIMAL(10,0)", "nullable": true, "default": null, "identity": false},
+        {"name": "LOGIN_NM", "type": "VARCHAR(30)", "nullable": false, "default": null, "identity": false}
+      ],
+      "primary_key": ["ACCOUNT_ID"],
+      "foreign_keys": [
+        {"name": "FK_ACCOUNT_PROFILE", "columns": ["PROFILE_ID"], "ref_table": "T_PROFILE", "ref_columns": ["PROFILE_ID"]}
+      ],
+      "unique": []
+    },
+    {
+      "name": "T_PROFILE",
+      "schema": "APP",
+      "columns": [
+        {"name": "PROFILE_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "ACCOUNT_ID", "type": "DECIMAL(10,0)", "nullable": false, "default": null, "identity": false},
+        {"name": "DISPLAY_NM", "type": "VARCHAR(40)", "nullable": true, "default": null, "identity": false}
+      ],
+      "primary_key": ["PROFILE_ID"],
+      "foreign_keys": [
+        {"name": "FK_PROFILE_ACCOUNT", "columns": ["ACCOUNT_ID"], "ref_table": "T_ACCOUNT", "ref_columns": ["ACCOUNT_ID"]}
+      ],
+      "unique": []
+    }
+  ]
+}
