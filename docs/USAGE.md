@@ -156,7 +156,17 @@ java -jar target/spec-driven-auto-regression-0.2.7.jar \
 
 - runner 只認 suite_manifest(test_case.yaml 不會被自動發現)。
 - 連線字串走 env_profile 的 `secret_ref: env://JDBC_CONNECTION` → 跑之前 export 該環境變數。
-- 結果:`result.json` 的 `test_results[].status`(passed/failed/blocked)= eval 通過率來源。
+- 結果:`result.json` 的 `test_results[].status`(passed/failed/blocked)= eval 通過率來源;
+  亂序多跑後丟給 `uv run python -m pipeline.flaky_gate <各次 result.json>` 篩 flaky。
+
+### 實測狀態(2026-08-05,本機 ARTF 0.2.7 實跑)
+
+- `validate`:CaseSmith bundle **passed,findings 零**(契約假設全數成立)。
+- `run`:一路到 provider 層,卡在兩個環境前置(非 bundle 問題):
+  1. `JDBC_CONNECTION` 環境變數(DB 連線字串)
+  2. JDBC driver jar——框架不帶 driver,`doctor drivers` 確認 oracle/db2 皆缺;
+     用 `--driver-path <jar>` / `REGRESS_DRIVER_PATH` / `usage-kit/drivers/` 提供。
+- 真跑全綠還需要:一個 DB2(Docker)或相容 DB + 對應 driver jar。
 
 ## 測試(改完任何元件跑這兩條)
 
