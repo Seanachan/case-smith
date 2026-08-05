@@ -123,35 +123,6 @@ def test_verify_ignore_exact_is_table_scoped(schema):
     assert verify_ignore_for(domain, schema, "T_CUSTOMER") == frozenset()
 
 
-def test_ddl_bootstrap_schema_tables_and_fk_via_alter(schema):
-    from pipeline.render_artifacts import render_ddl
-
-    ddl = render_ddl(schema, ["T_CUSTOMER", "T_ORDER"])
-    assert "CREATE SCHEMA IF NOT EXISTS APP;" in ddl
-    assert "CREATE TABLE IF NOT EXISTS APP.T_CUSTOMER" in ddl
-    assert "ALTER TABLE APP.T_ORDER ADD CONSTRAINT FK_ORDER_CUST" in ddl
-    # FK 一律 ALTER 後補:CREATE 段不含 REFERENCES
-    create_part = ddl.split("ALTER TABLE")[0]
-    assert "REFERENCES" not in create_part
-
-
-def test_ephemeral_bundle_has_bootstrap_first_and_generated_connection(schema):
-    planner = SeedPlanner(schema, DomainConfig(), ask_model=["T_ORDER.STATUS_CD"])
-    base = planner.plan_base(["T_ORDER"])
-    row = planner.plan_case("T_ORDER", "Characterize_Ephemeral")
-    spec = CaseBundleSpec(case_id="Characterize_Ephemeral", title="t", suite_id="S")
-    files = render_bundle(spec, schema, base, row,
-                          {"T_ORDER.STATUS_CD": "P"}, ephemeral=True)
-    assert "fixtures/ddl_bootstrap.sql" in files
-    tc = yaml.safe_load(files["test_cases/Characterize_Ephemeral.yaml"])
-    assert tc["setup"]["operations"][0]["id"] == "bootstrap_ddl"
-    assert check_test_case(tc) == []
-    env = yaml.safe_load(files[f"env_profiles/{spec.profile}.yaml"])
-    provider = env["providers"][spec.provider_id]
-    assert provider["runtime_mode"] == "ephemeral"
-    assert provider["bindings"]["connection"] == {"local_ref": "approved_local_h2_db2"}
-
-
 def test_verify_ignore_unmatched_pattern_is_noop(schema):
     # domain.example.yaml 引用的欄位(CREATED_AT 等)不在 example schema——
     # 跨專案 config 允許含他表欄位,比對不到就是 no-op

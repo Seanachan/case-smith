@@ -54,7 +54,6 @@ uv run python -m pipeline.cli \
 | `--out` | 選 | 輸出**目錄** | 會產 `bundle/`(9 檔)+ `runs.jsonl`(量測);預設 `out/casesmith` |
 | `--list` | 選 | (無值) | 只印方法清單(名稱、id、條件欄位)就結束 |
 | `--fake` | 測試用 | 假模型回應 JSON 字串,如 `'{"T_CUSTOMER.COUNTRY_CD": "TW"}'` | 離線/CI 用,跳過真模型 |
-| `--ephemeral` | 選 | (無值) | bundle 針對**框架自管 H2**(DB2 相容模式):自帶 DDL bootstrap、連線走 `approved_local_h2_db2`——**免 Docker、免 JDBC_CONNECTION**,開發迴圈首選 |
 
 CLI 自己做的事(你不用管):條件欄位過濾成 ask_model 白名單(PK/FK 排除
 ——ID 歸 planner 配)、FK 閉包、seed 順序、模型重試、契約檢查。
@@ -138,18 +137,10 @@ SQL_EXEC → 直接 raise `PlannerBugError`,**不要 retry,去修 planner**。
 
 ## ⑥ ARTF runner(Java 17+,指令出自 ARTF README「5-Minute Quick Start」)
 
-### 快速路:ephemeral H2(免 Docker、免連線設定,2026-08-05 實測 passed)
+> 本機執行一律**真 DB2**(2026-08-05 使用者裁定;ephemeral H2 路線已移除,
+> 需要時看 git 歷史 dafd4e6)。
 
-```bash
-# bundle 用 --ephemeral 產,然後直接跑——不用 DB2、不用 driver、不用 env var:
-java -jar target/spec-driven-auto-regression-0.2.7.jar run \
-  --suite <case-smith>/out/<run>/bundle/suite_manifest.yaml --profile local_fake
-```
-
-框架自起 in-memory H2(DB2 相容模式);bundle 內的 `fixtures/ddl_bootstrap.sql`
-(由 schema JSON 確定性生成)負責建表。真 DB2 走下面的完整路。
-
-### 完整路:真 DB2(Docker)
+### 真 DB2(Docker)
 
 ```bash
 # ARTF repo 內,首次:

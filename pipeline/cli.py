@@ -95,8 +95,6 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default="out/casesmith", help="bundle 輸出目錄")
     ap.add_argument("--list", action="store_true", help="列出 spec 裡的方法後結束")
     ap.add_argument("--fake", help='測試用:跳過真模型,直接給 JSON 值,如 \'{"T_X.COL": "V"}\'')
-    ap.add_argument("--ephemeral", action="store_true",
-                    help="bundle 針對框架自管 H2(含 DDL bootstrap,免 Docker/JDBC_CONNECTION)")
     args = ap.parse_args(argv)
 
     spec_card = json.loads(Path(args.spec).read_text(encoding="utf-8"))
@@ -156,7 +154,6 @@ def main(argv=None) -> int:
     files = render_bundle(
         bundle_spec, schema, base, case_row, values,
         verify_ignore=verify_ignore_for(domain, schema, case_row.table),
-        ephemeral=args.ephemeral,
     )
     write_bundle(files, out_dir / "bundle")
 

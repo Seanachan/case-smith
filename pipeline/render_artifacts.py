@@ -74,42 +74,6 @@ def apply_model_values(case_row: SeedRow, model_values: Mapping[str, Any]) -> Se
     )
 
 
-def render_ddl(schema: Schema, tables_parent_first: Iterable[str]) -> str:
-    """確定性 DDL:CREATE SCHEMA + CREATE TABLE(無 FK)+ 全部 FK 走 ALTER。
-
-    給 ephemeral(框架自管 H2)bootstrap 用——H2 起來是空的,DDL 必須在
-    seed 之前跑。FK 一律 ALTER 後補:表都建完才加約束,環自然無事。
-    `IF NOT EXISTS` 是 H2 語法;這份 DDL 只用於 ephemeral,不打真 DB2。
-    identity 欄位未處理(example schema 無;接真 schema 時補)。
-    """
-    tables = [schema.tables[t] for t in tables_parent_first]
-    stmts: list = []
-    for schema_name in sorted({t.schema_name for t in tables if t.schema_name}):
-        stmts.append(f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
-    for table in tables:
-        cols = []
-        for col in table.columns:
-            line = f"    {col.name} {col.type}"
-            if not col.nullable:
-                line += " NOT NULL"
-            cols.append(line)
-        if table.primary_key:
-            cols.append(f"    PRIMARY KEY ({', '.join(table.primary_key)})")
-        stmts.append(
-            f"CREATE TABLE IF NOT EXISTS {table.qualified_name} (\n"
-            + ",\n".join(cols) + "\n);"
-        )
-    for table in tables:
-        for fk in table.foreign_keys:
-            ref = schema.tables[fk.ref_table]
-            stmts.append(
-                f"ALTER TABLE {table.qualified_name} ADD CONSTRAINT {fk.name} "
-                f"FOREIGN KEY ({', '.join(fk.columns)}) "
-                f"REFERENCES {ref.qualified_name} ({', '.join(fk.ref_columns)});"
-            )
-    return "\n".join(stmts) + "\n"
-
-
 def verify_ignore_for(domain: DomainConfig, schema: Schema, table: str) -> FrozenSet[str]:
     """domain 的 ignore_in_snapshot("TABLE.COL" 精確或 fnmatch 樣式)→
     該表要從 verify WHERE 排除的欄名集合。
@@ -179,7 +143,7 @@ def render_cleanup_sql(schema: Schema, tables_parent_first: Iterable[str]) -> st
 # ---------------------------------------------------------------------------
 
 
-def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
+def _test_case_doc(spec: CaseBundleSpec) -> dict:
     tc, tgt = spec.case_id, spec.target
     ev = f"provider-evidence/jdbc"
     doc = {
@@ -269,16 +233,6 @@ def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
         },
         "runtime": {"timeout": "PT1M", "retry": {"max_attempts": 1}},
     }
-    if ephemeral:
-        # H2 ephemeral 起來是空庫:DDL bootstrap 必須排在所有 seed 之前
-        doc["data"]["ddl_bootstrap"] = {"ref": "fixtures/ddl_bootstrap.sql"}
-        doc["setup"]["operations"].insert(0, {
-            "id": "bootstrap_ddl",
-            "target": tgt,
-            "operation": "db_seed",
-            "inputs": {"sql_ref": {"ref": "${data.ddl_bootstrap}"}},
-        })
-        doc["evidence"]["required"].insert(0, f"{ev}/seed_bootstrap_ddl.yaml")
     return doc
 
 
@@ -340,16 +294,11 @@ def _provider_instance_doc(spec: CaseBundleSpec) -> dict:
     }
 
 
-def _env_profile_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
-    if ephemeral:
-        # 框架自管 H2(DB2 相容模式)——免 Docker、免環境變數。
-        # local_ref 只認 approved_local_h2_oracle / approved_local_h2_db2
-        # (ContractBaselineService.approvedJdbcLocalRef,實碼查證)
-        connection = {"local_ref": "approved_local_h2_db2"}
-        runtime_mode = "ephemeral"
-    else:
-        connection = {"secret_ref": "env://JDBC_CONNECTION"}
-        runtime_mode = "native"
+def _env_profile_doc(spec: CaseBundleSpec) -> dict:
+    # 本機執行一律真 DB2(2026-08-05 使用者裁定,ephemeral H2 路線已移除;
+    # 需要時看 git dafd4e6)
+    connection = {"secret_ref": "env://JDBC_CONNECTION"}
+    runtime_mode = "native"
     return {
         "env_profile_id": spec.profile,
         "execution_mode": "local",
@@ -392,13 +341,8 @@ def render_bundle(
     case_row: SeedRow,
     model_values: Mapping[str, Any],
     verify_ignore: FrozenSet[str] = frozenset(),
-    ephemeral: bool = False,
 ) -> Dict[str, str]:
-    """回傳 {相對路徑: 檔案內容}。純函式,不落地;落地用 write_bundle。
-
-    ephemeral=True:bundle 針對框架自管 H2(免 Docker/環境變數)——
-    多一份 DDL bootstrap、env_profile 走 generated:// 連線。
-    """
+    """回傳 {相對路徑: 檔案內容}。純函式,不落地;落地用 write_bundle。"""
     patched = apply_model_values(case_row, model_values)
     case_plan = SeedPlan(order=[patched.table], deferred=[], rows=[patched])
     all_tables = list(base_plan.order)
@@ -416,13 +360,11 @@ def render_bundle(
         f"queries/snapshot_{tc}.sql": render_snapshot_sql(schema, patched),
         f"queries/verify_{tc}.sql": render_verify_sql(schema, patched, verify_ignore),
         "expected_results/verify_expected.json": json.dumps({"min_rows": 1}) + "\n",
-        f"test_cases/{tc}.yaml": _yaml(_test_case_doc(spec, ephemeral=ephemeral)),
+        f"test_cases/{tc}.yaml": _yaml(_test_case_doc(spec)),
         "suite_manifest.yaml": _yaml(_suite_manifest_doc(spec)),
         f"provider_instances/{spec.provider_id}.yaml": _yaml(_provider_instance_doc(spec)),
-        f"env_profiles/{spec.profile}.yaml": _yaml(_env_profile_doc(spec, ephemeral=ephemeral)),
+        f"env_profiles/{spec.profile}.yaml": _yaml(_env_profile_doc(spec)),
     }
-    if ephemeral:
-        files["fixtures/ddl_bootstrap.sql"] = render_ddl(schema, all_tables)
     return files
 
 
