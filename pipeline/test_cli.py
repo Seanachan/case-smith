@@ -34,7 +34,7 @@ def test_full_run_offline_with_slot(tmp_path, capsys):
     tc_files = list((tmp_path / "bundle" / "test_cases").glob("*.yaml"))
     assert len(tc_files) == 1
     assert check_test_case(yaml.safe_load(tc_files[0].read_text())) == []
-    verify_sql = next((tmp_path / "bundle" / "queries").glob("*.sql")).read_text()
+    verify_sql = next((tmp_path / "bundle" / "queries").glob("verify_*.sql")).read_text()
     assert "COUNTRY_CD = 'TW'" in verify_sql
 
 

@@ -205,6 +205,26 @@ java -jar target/spec-driven-auto-regression-0.2.7.jar run \
 (`Table.qualified_name`),不再依賴連線字串的 `currentSchema`——
 SQLCODE=-204 的正解,真 DB2 驗證通過。
 
+## ⑦ Golden master:expected 從「現況」來,模型不參與
+
+recording run 的 execute 會跑 **snapshot 查詢**(SELECT 全欄位、只鎖 pk),
+evidence 的 `masked_sample_result` 即現況整列。capture 把觀測值釘進 verify SQL:
+
+```bash
+# 1. recording run(上面的 run 指令)
+# 2. capture:從 RUN 目錄抓現況,覆寫 bundle 的 verify SQL
+RUN=$(ls -td <ARTF>/target/provider-capability/jdbc/<SUITE>/*/RUN-* | head -1)
+uv run python -m pipeline.golden_master \
+    --run-dir "$RUN" --bundle out/xxx/bundle \
+    --schema schema/schema.example.json --domain domain/domain.example.yaml \
+    --case <case_id> --table <主表>
+# 3. replay run = 回歸測試(特徵化現況;之後行為變了才會紅)
+```
+
+被遮罩欄位(password/secret 類欄名,值=`***`)自動不進 verify;
+`ignore_in_snapshot` 欄位同樣排除。SUT 進 case(等 ARTF shell_command
+runtime)後,capture 抓到的就是 post-SUT 狀態,流程不變。
+
 ## 測試(改完任何元件跑這兩條)
 
 ```bash

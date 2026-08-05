@@ -126,6 +126,21 @@ def verify_ignore_for(domain: DomainConfig, schema: Schema, table: str) -> Froze
     return frozenset(ignored)
 
 
+def render_snapshot_sql(schema: Schema, case_row: SeedRow) -> str:
+    """golden master 用:SELECT 全欄位、只鎖 pk——讀「現況」,不帶值條件。
+    execute 階段跑它,evidence 的 masked_sample_result 才會含整列,
+    capture(pipeline/golden_master.py)靠這個重生 verify SQL。"""
+    table = schema.tables[case_row.table]
+    if len(table.primary_key) != 1:
+        raise ValueError(f"{case_row.table} 無單欄主鍵,snapshot SQL 無法定位列")
+    pk = table.primary_key[0]
+    cols = ", ".join(c.name for c in table.columns)
+    return (
+        f"SELECT {cols} FROM {table.qualified_name}\n"
+        f"WHERE {pk} = {_sql_literal(case_row.values[pk])}\n"
+    )
+
+
 def render_verify_sql(
     schema: Schema, case_row: SeedRow, ignore: FrozenSet[str] = frozenset()
 ) -> str:
@@ -182,6 +197,7 @@ def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
             "seed_base": {"ref": "fixtures/seed_base.sql"},
             "seed_case": {"ref": f"fixtures/seed_{tc}.sql"},
             "cleanup_sql": {"ref": "fixtures/cleanup.sql"},
+            "snapshot_query": {"ref": f"queries/snapshot_{tc}.sql"},
             "verify_query": {"ref": f"queries/verify_{tc}.sql"},
         },
         "setup": {
@@ -204,10 +220,12 @@ def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
         "execute": {
             "operations": [
                 {
+                    # snapshot(全欄位)而非 verify 查詢:evidence 才會含整列,
+                    # golden master capture 需要
                     "id": "read_case_row",
                     "target": tgt,
                     "operation": "db_query",
-                    "inputs": {"query_ref": {"ref": "${data.verify_query}"}},
+                    "inputs": {"query_ref": {"ref": "${data.snapshot_query}"}},
                     "outputs": {
                         "row_count": "row_count",
                         "sample_rows": "sample_rows",
@@ -239,12 +257,14 @@ def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
                 }
             ]
         },
+        # 檔名 = <op類型>_<op_id>.yaml——0.2.7 實跑產物格式;
+        # 官方 sample 的 <type>_<tc>__<op>.yaml 命名與實作脫節,勿抄
         "evidence": {
             "required": [
-                f"{ev}/seed_{tc}__seed_base.yaml",
-                f"{ev}/seed_{tc}__seed_case.yaml",
-                f"{ev}/query_{tc}__read_case_row.yaml",
-                f"{ev}/cleanup_{tc}__cleanup_all.yaml",
+                f"{ev}/seed_seed_base.yaml",
+                f"{ev}/seed_seed_case.yaml",
+                f"{ev}/query_read_case_row.yaml",
+                f"{ev}/cleanup_cleanup_all.yaml",
             ]
         },
         "runtime": {"timeout": "PT1M", "retry": {"max_attempts": 1}},
@@ -258,7 +278,7 @@ def _test_case_doc(spec: CaseBundleSpec, ephemeral: bool = False) -> dict:
             "operation": "db_seed",
             "inputs": {"sql_ref": {"ref": "${data.ddl_bootstrap}"}},
         })
-        doc["evidence"]["required"].insert(0, f"{ev}/seed_{tc}__bootstrap_ddl.yaml")
+        doc["evidence"]["required"].insert(0, f"{ev}/seed_bootstrap_ddl.yaml")
     return doc
 
 
@@ -393,6 +413,7 @@ def render_bundle(
         "fixtures/seed_base.sql": emit_sql(base_plan, schema) + "\n",
         f"fixtures/seed_{tc}.sql": emit_sql(case_plan, schema) + "\n",
         "fixtures/cleanup.sql": render_cleanup_sql(schema, all_tables),
+        f"queries/snapshot_{tc}.sql": render_snapshot_sql(schema, patched),
         f"queries/verify_{tc}.sql": render_verify_sql(schema, patched, verify_ignore),
         "expected_results/verify_expected.json": json.dumps({"min_rows": 1}) + "\n",
         f"test_cases/{tc}.yaml": _yaml(_test_case_doc(spec, ephemeral=ephemeral)),
