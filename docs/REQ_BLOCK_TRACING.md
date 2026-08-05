@@ -1,0 +1,41 @@
+# 需求:block 層級的行為追蹤(2026-08-05,使用者口述)
+
+## 需求原文(整理)
+
+- 輸入單位是一個 **block**(一段業務描述),不是單一方法。
+- block 內含大量**跨表操作**;事前**不知道**它會用到哪些 schema、表、服務。
+- 只知道 block 在做什麼、會執行哪類操作。
+- 因此 extractor 要**追蹤原始碼行為**:順著呼叫鏈往下,找出實際用到的
+  schema/表/服務(gRPC、HTTP API…)以及**怎麼用**。
+- schema 不必然只有一份——系統比目前的 example 配置複雜。
+
+## 現有架構已涵蓋(不用動)
+
+| 能力 | 位置 | 說明 |
+|---|---|---|
+| 多表 seed | `SeedPlanner.plan_base(tables)` | 吃表清單,FK 閉包自己算 |
+| 多 schema 資料模型 | `Table.schema_name`(schema JSON 的 `"schema"` 欄) | 一份 JSON 可裝多 schema 的表 |
+| 下游解耦 | planner/orchestrator/renderer | 只吃「表清單+欄位白名單」,不管上游怎麼發現 |
+
+## 缺口(要做)
+
+1. **Extractor v2:呼叫鏈閉包**(最大塊,extractor 那條線)
+   - v1 是 per-method syntax-level,明文不做跨方法資料流。
+   - 需要:block 進入點 → 呼叫圖 transitive closure → 聯集底下所有
+     tables/operations/condition_columns/endpoints → 吐 block 層級的 spec card。
+   - spec card 契約要加:block 定義(進入點集合)+ 聚合結果;
+     per-method 明細保留(除錯用)。
+2. **SQL 的 schema 前綴**:`emit_sql` / verify SQL 目前吐裸表名;
+   多 schema 時要 `SCHEMA.TABLE` 限定(`Table.schema_name` 已有,只是沒用上)。
+   跨 schema 同名表:planner 以表名為 key,會撞——key 要改 qualified name。
+3. **服務類 provider**:extractor 的 EndpointAnalyzer 只認 HTTP;gRPC 呼叫點
+   偵測未做。renderer 目前只出 jdbc provider;之後要出 wiremock_http_mock /
+   grpc_mock 的 provider_instance + stub + verify(ARTF 有對應 provider,
+   body 比對是全等——見 ARTF_CONTRACT.md Q4)。
+
+## 待使用者釐清
+
+- **block 的邊界怎麼給**:進入點方法名清單?namespace?檔案集合?
+  一段自然語言描述(那就需要人/強模型先對應到進入點)?
+- 跨 schema 有沒有 FK(影響閉包要不要跨 schema 走)?
+- gRPC 的 contract(.proto)拿得到嗎?
