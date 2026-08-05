@@ -13,6 +13,7 @@ from pipeline.render_artifacts import (
     render_bundle,
     render_cleanup_sql,
     render_verify_sql,
+    verify_ignore_for,
 )
 from pipeline.seed_planner import DomainConfig, Schema, SeedPlanner
 
@@ -104,3 +105,28 @@ def test_deprecated_artifact_root_detected(bundle):
     sm = yaml.safe_load(bundle["suite_manifest.yaml"])
     sm["artifact_roots"]["execution_profiles"] = "execution_profiles/"
     assert any("execution_profiles" in v for v in check_suite_manifest(sm))
+
+
+# ---------------------------------------------------------------------------
+# ignore_in_snapshot → verify_ignore 解析
+# ---------------------------------------------------------------------------
+
+
+def test_verify_ignore_fnmatch_pattern(schema):
+    domain = DomainConfig(ignore_in_snapshot=["*.ORDER_DT"])
+    assert verify_ignore_for(domain, schema, "T_ORDER") == frozenset({"ORDER_DT"})
+
+
+def test_verify_ignore_exact_is_table_scoped(schema):
+    domain = DomainConfig(ignore_in_snapshot=["T_ORDER.STATUS_CD"])
+    assert verify_ignore_for(domain, schema, "T_ORDER") == frozenset({"STATUS_CD"})
+    assert verify_ignore_for(domain, schema, "T_CUSTOMER") == frozenset()
+
+
+def test_verify_ignore_unmatched_pattern_is_noop(schema):
+    # domain.example.yaml 引用的欄位(CREATED_AT 等)不在 example schema——
+    # 跨專案 config 允許含他表欄位,比對不到就是 no-op
+    domain = DomainConfig.from_yaml(
+        str(Path(__file__).resolve().parent.parent / "domain" / "domain.example.yaml")
+    )
+    assert verify_ignore_for(domain, schema, "T_CUSTOMER") == frozenset()

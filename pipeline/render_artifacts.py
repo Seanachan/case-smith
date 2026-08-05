@@ -23,12 +23,13 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from decimal import Decimal
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, Iterable, Mapping
 
 import yaml
 
-from pipeline.seed_planner import Schema, SeedPlan, SeedRow, emit_sql
+from pipeline.seed_planner import DomainConfig, Schema, SeedPlan, SeedRow, emit_sql
 
 ID_START = 900000
 ID_END = 999999
@@ -71,6 +72,22 @@ def apply_model_values(case_row: SeedRow, model_values: Mapping[str, Any]) -> Se
         table=case_row.table, scope=case_row.scope,
         values=values, slots=list(case_row.slots),
     )
+
+
+def verify_ignore_for(domain: DomainConfig, schema: Schema, table: str) -> FrozenSet[str]:
+    """domain 的 ignore_in_snapshot("TABLE.COL" 精確或 fnmatch 樣式)→
+    該表要從 verify WHERE 排除的欄名集合。
+
+    落地語意(ARTF_CONTRACT.md Q5):框架沒有欄位級 ignore 機制,
+    「忽略」= 該欄不寫進 verify SQL 的 WHERE。對實際欄位逐一比對,
+    比對不到的樣式是 no-op(不報錯——跨專案 config 可含他表欄位)。
+    """
+    ignored = set()
+    for col in schema.tables[table].columns:
+        key = f"{table}.{col.name}"
+        if any(fnmatch(key, pat) for pat in domain.ignore_in_snapshot):
+            ignored.add(col.name)
+    return frozenset(ignored)
 
 
 def render_verify_sql(

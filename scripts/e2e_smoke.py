@@ -23,7 +23,12 @@ from orchestrator.client import OpencodeClient  # noqa: E402
 from orchestrator.core import GenerationFailed, Orchestrator  # noqa: E402
 from orchestrator.metrics import MetricsLog  # noqa: E402
 from pipeline.contract_check import check_suite_manifest, check_test_case  # noqa: E402
-from pipeline.render_artifacts import CaseBundleSpec, render_bundle, write_bundle  # noqa: E402
+from pipeline.render_artifacts import (  # noqa: E402
+    CaseBundleSpec,
+    render_bundle,
+    verify_ignore_for,
+    write_bundle,
+)
 from pipeline.seed_planner import DomainConfig, Schema, SeedPlanner  # noqa: E402
 
 CASE_ID = "Characterize_UpdateOrderStatus_Default"
@@ -45,7 +50,10 @@ def main() -> int:
     schema = Schema.from_json(
         json.loads((REPO_ROOT / "schema" / "schema.example.json").read_text("utf-8"))
     )
-    planner = SeedPlanner(schema, DomainConfig(), ask_model=["T_ORDER.STATUS_CD"])
+    domain = DomainConfig.from_yaml(
+        str(REPO_ROOT / "domain" / "domain.example.yaml")
+    )
+    planner = SeedPlanner(schema, domain, ask_model=["T_ORDER.STATUS_CD"])
     base = planner.plan_base(["T_ORDER"])
     case_row = planner.plan_case("T_ORDER", CASE_ID)
 
@@ -71,7 +79,10 @@ def main() -> int:
         title="Characterize UpdateOrderStatus current behaviour",
         suite_id="CASESMITH-SMOKE",
     )
-    files = render_bundle(spec, schema, base, case_row, result.values)
+    files = render_bundle(
+        spec, schema, base, case_row, result.values,
+        verify_ignore=verify_ignore_for(domain, schema, case_row.table),
+    )
     write_bundle(files, out_dir / "bundle")
 
     tc = yaml.safe_load(files[f"test_cases/{CASE_ID}.yaml"])
