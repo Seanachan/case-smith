@@ -66,6 +66,17 @@ public sealed class MethodCard
 
     [JsonPropertyName("dynamic_sql")]
     public bool DynamicSql { get; set; }
+
+    /// <summary>
+    /// Names of methods invoked inside this method body (syntax-level, sorted,
+    /// deduplicated). Spec card v2: pipeline/block_spec.py walks these edges to
+    /// build the block-level transitive closure. VB parentheses ambiguity:
+    /// indexing into locals/parameters parses as an invocation too, so known
+    /// local names are excluded; unresolvable names are kept and surfaced by
+    /// the Python side as unresolved_calls.
+    /// </summary>
+    [JsonPropertyName("calls")]
+    public List<string> Calls { get; set; } = new();
 }
 
 public sealed class Signature

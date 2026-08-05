@@ -61,7 +61,38 @@ internal static class MethodExtractor
                 .ThenBy(e => e.HttpMethod, StringComparer.Ordinal)
                 .ToList(),
             DynamicSql = sql.DynamicSql,
+            Calls = ExtractCalls(methodBlock),
         };
+    }
+
+    private static List<string> ExtractCalls(MethodBlockSyntax method)
+    {
+        // VB parentheses ambiguity: arr(0) parses as InvocationExpression.
+        // Best syntax-level filter: drop bare-identifier invocations whose name
+        // matches a parameter or local variable of this method.
+        var locals = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var paramList = method.SubOrFunctionStatement.ParameterList;
+        if (paramList is not null)
+            foreach (var p in paramList.Parameters)
+                locals.Add(p.Identifier.Identifier.Text);
+        foreach (var decl in method.DescendantNodes().OfType<VariableDeclaratorSyntax>())
+            foreach (var name in decl.Names)
+                locals.Add(name.Identifier.Text);
+
+        var calls = new SortedSet<string>(StringComparer.Ordinal);
+        foreach (var inv in method.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            switch (inv.Expression)
+            {
+                case IdentifierNameSyntax idn when !locals.Contains(idn.Identifier.Text):
+                    calls.Add(idn.Identifier.Text);
+                    break;
+                case MemberAccessExpressionSyntax ma:
+                    calls.Add(ma.Name.Identifier.Text);
+                    break;
+            }
+        }
+        return calls.ToList();
     }
 
     private static string NonEmptyOrObject(string? typeText)

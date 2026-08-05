@@ -6,6 +6,87 @@
   },
   "methods": [
     {
+      "id": "CaseSmith.Fixtures.Blocks.AuditHelper.WriteLog",
+      "file": "CallGraph.vb",
+      "line": 23,
+      "summary": "",
+      "signature": {
+        "name": "WriteLog",
+        "params": [
+          {
+            "name": "msg",
+            "type": "String"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false,
+      "calls": []
+    },
+    {
+      "id": "CaseSmith.Fixtures.Blocks.SettlementFlow.LoadCustomer",
+      "file": "CallGraph.vb",
+      "line": 15,
+      "summary": "",
+      "signature": {
+        "name": "LoadCustomer",
+        "params": [
+          {
+            "name": "custId",
+            "type": "Decimal"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "SELECT"
+          ]
+        }
+      ],
+      "condition_columns": [
+        "T_CUSTOMER.CUST_ID"
+      ],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false,
+      "calls": []
+    },
+    {
+      "id": "CaseSmith.Fixtures.Blocks.SettlementFlow.SettleOrder",
+      "file": "CallGraph.vb",
+      "line": 7,
+      "summary": "",
+      "signature": {
+        "name": "SettleOrder",
+        "params": [
+          {
+            "name": "orderId",
+            "type": "Decimal"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false,
+      "calls": [
+        "LoadCustomer",
+        "WriteLog"
+      ]
+    },
+    {
       "id": "CaseSmith.Fixtures.Dao.CustomerRepository.DeleteCustomer",
       "file": "SingleTableCrud.vb",
       "line": 25,
@@ -34,7 +115,8 @@
       ],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Dao.CustomerRepository.GetActiveCustomer",
@@ -66,7 +148,8 @@
       ],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Dao.CustomerRepository.InsertCustomer",
@@ -99,7 +182,8 @@
       "condition_columns": [],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Dao.CustomerRepository.Touch",
@@ -121,7 +205,8 @@
       "condition_columns": [],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Dao.CustomerRepository.UpdateCustomerName",
@@ -156,7 +241,8 @@
       ],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Dao.OrderQueryService.FindOrdersByStatus",
@@ -194,7 +280,8 @@
         "STATUS_CD"
       ],
       "endpoints": [],
-      "dynamic_sql": true
+      "dynamic_sql": true,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Ops.OrderProcessor.ClassifyOrder",
@@ -220,7 +307,8 @@
       "condition_columns": [],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Ops.OrderProcessor.FetchOrderStatus",
@@ -247,7 +335,11 @@
           "url": "https://api.example.internal/orders/status"
         }
       ],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": [
+        "Create",
+        "ToString"
+      ]
     },
     {
       "id": "CaseSmith.Fixtures.Ops.OrderProcessor.NoOp",
@@ -264,7 +356,8 @@
       "condition_columns": [],
       "unqualified_condition_columns": [],
       "endpoints": [],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": []
     },
     {
       "id": "CaseSmith.Fixtures.Ops.OrderProcessor.NotifyOrderCreated",
@@ -291,7 +384,10 @@
           "url": "https://api.example.internal/orders/notify"
         }
       ],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": [
+        "UploadString"
+      ]
     }
   ]
 }

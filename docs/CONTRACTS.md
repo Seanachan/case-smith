@@ -147,7 +147,8 @@ FK」的 identifying 1:1 表呼叫 `plan_case()` 會沿用 base ID，回傳的 S
       "condition_columns": ["T_ORDER.STATUS_CD"],
       "unqualified_condition_columns": ["STATUS_CD"],
       "endpoints": [{"http_method": "POST", "url": "https://..."}],
-      "dynamic_sql": false
+      "dynamic_sql": false,
+      "calls": ["LoadCustomer", "WriteLog"]
     }
   ]
 }
@@ -163,6 +164,11 @@ context 注入——理解產物生產在開發期,消費時只有一行,不違�
 **v1 為 syntax-level 抽取**(直接 parse `.vb`,不用 MSBuildWorkspace/AnalyzeDataFlow):
 legacy .NET Framework 的 .sln 在 mac/Docker 上大概率載入失敗,而常數 SQL、簽章、
 分支數、endpoint 常數全部語法層可得;semantic 需求(跨方法資料流)標 v2。
+`calls`(v2 新增,2026-08-06):方法內被呼叫的方法名(語法層,排序去重)。
+VB 括號雙關(`arr(0)` 也是 invocation 語法)→ 參數/區域變數名的裸識別字呼叫
+一律排除;建構子(`New X()`)不收。消費端 `pipeline/block_spec.py`:錨點沿
+`calls` 邊做 block 閉包,解析不到的名字進 `unresolved_calls` 揭露,不猜。
+無 `calls` 欄位的舊卡片 → 閉包退化為錨點本身(向後相容)。
 
 ## Mutator manifest 契約 v1
 

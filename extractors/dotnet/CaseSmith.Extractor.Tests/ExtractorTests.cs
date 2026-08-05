@@ -206,7 +206,7 @@ public class ExtractorTests
         }
         methods = methods.OrderBy(m => m.Id, StringComparer.Ordinal).ToList();
 
-        Assert.Equal(10, methods.Count);
+        Assert.Equal(13, methods.Count);  // 10 + CallGraph.vb 的 3 個
         var ids = methods.Select(m => m.Id).ToList();
         Assert.Equal(ids.OrderBy(x => x, StringComparer.Ordinal).ToList(), ids);
     }
@@ -226,5 +226,27 @@ public class ExtractorTests
 
         Assert.NotEmpty(methods);
         Assert.All(methods, m => Assert.Equal("", m.Summary));
+    }
+
+    // ---------------- CallGraph.vb ----------------
+
+    [Fact]
+    public void SettleOrder_CollectsCalls_SortedAndDeduplicated()
+    {
+        var m = Find(ExtractFile("CallGraph.vb"), "SettleOrder");
+        Assert.Equal(new List<string> { "LoadCustomer", "WriteLog" }, m.Calls);
+    }
+
+    [Fact]
+    public void SettleOrder_LocalArrayIndexing_IsNotACall()
+    {
+        var m = Find(ExtractFile("CallGraph.vb"), "SettleOrder");
+        Assert.DoesNotContain("amounts", m.Calls);
+    }
+
+    [Fact]
+    public void LeafMethod_HasEmptyCalls()
+    {
+        Assert.Empty(Find(ExtractFile("CallGraph.vb"), "WriteLog").Calls);
     }
 }
