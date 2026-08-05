@@ -49,7 +49,7 @@ Regression Test Framework 的 test cases(YAML 為主 + SQL/JSON seed data)。
 | patch.md | 只回傳**單一欄位** `{"field": ..., "value": ...}`,由 Python 替換;不重生整份 artifact |
 | 知識注入 | 不叫 agent「去讀檔」(7–8B 常跳過);orchestrator 依步驟把片段**注入** template |
 | schema 來源(2026-08-05) | DB2 export 的 DDL → 使用者的 .mjs script parse 成 JSON;**契約形狀以 `schema/schema.example.json` 為準**,.mjs 對齊它 |
-| dotnet 執行(2026-08-05) | Mac 開發,dotnet 一律走 **Docker**(`mcr.microsoft.com/dotnet/sdk:9.0`),不依賴本機 SDK |
+| dotnet 執行(2026-08-05,同日放寬) | Mac 開發。預設**本機 SDK**(dotnet 9.0.101,較快);`extractors/dotnet/Dockerfile`(sdk:9.0)保留當可重現備援。使用者明示不強制 Docker |
 | repo 邊界(2026-08-05) | repo 保持 **private**;generate.md / patch.md 去真實表名後可進版控(利於 template 版本化綁 eval) |
 | 執行模型(2026-08-05) | seed DB(+API 前置)→ 跑受測 `.exe`(讀寫 DB)→ `.exe` 對 **framework 提供的 mock endpoint** 送 API request。可觀察輸出 = **DB snapshot + 攔截的 API request** 兩份;golden master / expected / ignore 規則都要涵蓋兩者。mock 由 framework 提供,不自建 |
 | topology 知識(2026-08-05) | 不手寫 topology.yaml:方法↔表、方法↔endpoint 由 Roslyn 抽進 spec.json(extractor 範圍 +抽 outbound API 呼叫點);操作流程知識從 framework samples 歸納(few-shot,排 fixture 之後)。domain.yaml 維持窄定義(欄位值 + snapshot 排除) |
@@ -66,9 +66,9 @@ Regression Test Framework 的 test cases(YAML 為主 + SQL/JSON seed data)。
 | `schema/schema.example.json` | schema JSON **契約**(DB2 DDL → .mjs 的目標形狀);6 張假表:4 層 FK 鏈 + 互指環 | 定稿 |
 | `schema/example.ddl` | 對應的 DB2 風格 DDL(.mjs parser 參考輸入) | 定稿 |
 | `domain/domain.example.yaml` | exact / pattern / ignore_in_snapshot 三段範例 | 定稿的形式 |
-| `pipeline/test_seed_planner.py` | 20 tests:閉包、topo、環(含自我參照)、三層 fallback、slot、共享配號、ID 區間、emit_sql | 全過 |
+| `pipeline/test_seed_planner.py` | 55 tests:閉包、topo、環(含自我參照/鑽石)、三層 fallback、hint 詞彙表、slot、共享配號、ID 區間、emit_sql、fail-fast raise 路徑、all-or-nothing 回滾、型別別名 quoting(經三輪審修 + 獨立驗證收案,見 docs/CONTRACTS.md「行為保證」) | 全過(主線實跑) |
 | `orchestrator/` | (平行 session 重建)失敗分類重試 + ModelSlot 介面 + opencode CLI transport | 自報 25 tests 過 |
-| `extractors/dotnet/` | Dockerfile(sdk:9.0)+ README,**只有骨架** | 待實作 |
+| `extractors/dotnet/` | **v1 完成**(2026-08-05):syntax-level VB 抽取器(C#,Microsoft.CodeAnalysis.VisualBasic),CLI `--input <dir> --output <file>`;抽簽章/branch_count/tables+operations/condition_columns(單表才掛表名)/endpoints/dynamic_sql 旗標;輸出契約見 docs/CONTRACTS.md「spec card」節,範例正本 `extractors/spec_card.example.json`(10 methods,fixture 實跑產出)。**不用** MSBuildWorkspace(理由見 CONTRACTS);semantic 資料流標 v2 | dotnet test 13/13(主線實跑) |
 
 已知限制:**組合(多欄)FK 未支援**——closure/topo/ID 引用只認單欄 FK,
 接真 schema 前若有組合 FK 必須先補。舊版三粗糙處(deferred UPDATE TODO、
@@ -91,9 +91,17 @@ Regression Test Framework 的 test cases(YAML 為主 + SQL/JSON seed data)。
    (2026-08-05 已裁決:pipeline `ModelSlot` 為正本,orchestrator/slots.py 版降級為
    prompt-view,`name` 導出為 `"TABLE.COLUMN"`;詳見 docs/CONTRACTS.md ModelSlot 節。)
 4. **信任閘門**(Python):
-   - snapshot 欄位排除(讀 domain.yaml 的 `ignore_in_snapshot`)→ 防假紅燈
-   - 整批**亂序跑 3 次**,不一致者踢除 → 防 flaky
-   - (加分)Roslyn mutation injector 當篩選閘:砍掉抓不到任何 mutant 的空洞測試
+   - ✅ snapshot 欄位排除(2026-08-05):`render_artifacts.py` 產 verify SQL 時排除
+     `ignore_in_snapshot` 欄位(ARTF 無框架級 ignore,排除法落地在 renderer)
+   - ✅ 亂序 harness(2026-08-05):洗牌=`pipeline/trust_gate.py`
+     (`shuffle_manifests`,確定性 seed,第 0 份保序,`python -m pipeline.trust_gate shuffle`);
+     判定=`pipeline/flaky_gate.py`(stable/flaky 踢除/blocked 人工/missing 踢除,
+     一致 failed 是真紅保留)。兩模組分工,判定器只有 flaky_gate 一個。
+     **實跑 3 次要使用者側 Java+DB2 環境**
+   - ✅ mutation injector(2026-08-05):`extractors/dotnet/CaseSmith.Mutator`——
+     三類運算子(compare_invert/arithmetic_swap/boolean_flip),字串 literal 不碰
+     (SQL 常數安全),mutant 必 re-parse、manifest 確定性排序;8 tests。
+     **跑 mutant 殺不殺**(rebuild+run suite)是使用者側 framework 的事
 5. **量測迴圈**:orchestrator 記錄一次通過率/錯誤分類/重試次數,
    template 版本化,綁 eval 數字。報告要的是 v1→vN 的改進曲線。
 

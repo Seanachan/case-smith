@@ -7,6 +7,8 @@
 
 ---
 
+## Don't add claude as the contributor of this repo.
+
 ## 核心設計原則
 
 > **能用確定性程式碼做到的，絕不寫成給模型的指示。**
