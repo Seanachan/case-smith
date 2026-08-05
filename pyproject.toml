@@ -1,0 +1,14 @@
+[project]
+name = "case-smith"
+version = "0.1.0"
+description = "Trustworthy regression tests for legacy projects via small models"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "jsonschema>=4.26.0",
+    "pytest>=9.1.1",
+]

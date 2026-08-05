@@ -216,3 +216,32 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# -------------------------------------------------------------
+# .NET / Roslyn extractor
+# -------------------------------------------------------------
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.dll
+*.pdb
+*.cache
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# -------------------------------------------------------------
+# CaseSmith:真實 schema / domain config 不進版控,只留 .example.*
+# -------------------------------------------------------------
+domain/*.yaml
+!domain/*.example.yaml
+schema/*.json
+!schema/*.example.json
+schema/*.ddl
+!schema/example.ddl
