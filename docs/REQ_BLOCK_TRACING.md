@@ -33,9 +33,25 @@
    grpc_mock 的 provider_instance + stub + verify(ARTF 有對應 provider,
    body 比對是全等——見 ARTF_CONTRACT.md Q4)。
 
+## block 邊界(2026-08-05 已定案)
+
+使用者給**半結構化描述檔**(block.yaml),兩種輸入、兩種用途:
+
+```yaml
+block_id: OrderSettlement
+description: >
+  自然語言行為描述——給人/報告/few-shot 語意脈絡,不進結構決策(鐵律)。
+anchors:            # 呼叫圖起點,「不用齊全」是特性:漏的靠 closure 補
+  - function: SettleOrder          # 函式名(可帶 namespace 前綴)
+  - file: Billing/Settle.vb        # 或 檔案 + 行號範圍
+    lines: 120-180                 # 行號 → 所屬方法:spec card 已有 file+line,查表即得
+```
+
+- extractor 從 anchors 起跳做呼叫圖 transitive closure,聯集表/操作/條件欄/endpoint。
+- **coverage 報告是驗收機制**:extractor 吐「實際碰到的表(操作)+ endpoint」
+  清單,人對照 description 找落差(描述錯 / 錨點漏,在這裡現形,早於假綠測試)。
+
 ## 待使用者釐清
 
-- **block 的邊界怎麼給**:進入點方法名清單?namespace?檔案集合?
-  一段自然語言描述(那就需要人/強模型先對應到進入點)?
 - 跨 schema 有沒有 FK(影響閉包要不要跨 schema 走)?
 - gRPC 的 contract(.proto)拿得到嗎?
