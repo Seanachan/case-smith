@@ -28,6 +28,37 @@ domain.yaml(選填)────────────────────�
 
 初次 clone 後:`uv sync`(裝 pyyaml + dev deps)。
 
+## 總指揮 CLI:一條指令跑完 ③④⑤⑥
+
+①②(spec.json、schema.json)備好之後,其餘全部交給 CLI:
+
+```bash
+uv run python -m pipeline.cli \
+    --spec   extractors/spec_card.example.json \
+    --schema schema/schema.example.json \
+    --domain domain/domain.example.yaml \
+    --method GetActiveCustomer \
+    --model  opencode/big-pickle \
+    --out    out/demo
+```
+
+### 參數表:放什麼、從哪來
+
+| 參數 | 必填 | 放什麼 | 值從哪來 |
+|---|---|---|---|
+| `--spec` | ✔ | extractor 產的 spec card JSON **路徑** | 步驟①的 `--output`;沒真專案 → `extractors/spec_card.example.json` |
+| `--schema` | ✔ | DB schema JSON **路徑** | 步驟②的 ddl2json 輸出;沒真 schema → `schema/schema.example.json` |
+| `--method` | ✔ | 要產測試的**方法名**(如 `GetActiveCustomer`) | 先跑 `--list` 看 spec 裡有哪些;同名衝突時改用完整 id |
+| `--domain` | 選 | domain config YAML 路徑 | 拿 `domain/domain.example.yaml` 改;控制欄位填充值 + `ignore_in_snapshot`。不給 = 空 config,型別預設值 |
+| `--model` | 選 | opencode 的 `provider/model` 字串 | `opencode models` 列出可用名;預設 `opencode/big-pickle` |
+| `--out` | 選 | 輸出**目錄** | 會產 `bundle/`(9 檔)+ `runs.jsonl`(量測);預設 `out/casesmith` |
+| `--list` | 選 | (無值) | 只印方法清單(名稱、id、條件欄位)就結束 |
+| `--fake` | 測試用 | 假模型回應 JSON 字串,如 `'{"T_CUSTOMER.COUNTRY_CD": "TW"}'` | 離線/CI 用,跳過真模型 |
+
+CLI 自己做的事(你不用管):條件欄位過濾成 ask_model 白名單(PK/FK 排除
+——ID 歸 planner 配)、FK 閉包、seed 順序、模型重試、契約檢查。
+結尾印 `contract violations: none` = bundle 可交給 ARTF。
+
 ## ① Extractor:VB 原始碼 → spec.json
 
 ```bash
