@@ -1,0 +1,104 @@
+contract_version: v0.2
+artifact: suite_manifest
+status: framework_owned_current_stage
+version_compatibility:
+  supported_versions: [v0.2]
+  unsupported_version_behavior: block_before_execution
+required_field_rules:
+  suite:
+    - suite_id
+    - selection
+  child_suite_aggregation:
+    - contract_version
+    - suite_id
+    - profile
+    - child_suites
+suite_model:
+  suite:
+    purpose: Primary runner model. A suite may contain one or more checked-in test cases.
+    profile_scope: suite_level_shared_execution_context
+    required_fields:
+      - suite_id
+      - selection
+    optional_fields:
+      - profile
+      - tests
+      - artifact_roots
+    tests_semantics:
+      - tests[] entries run under one selected profile from CLI --profile or suite_manifest.profile.
+      - Individual test cases must not select a different runtime profile.
+      - Provider bindings are resolved once per suite profile through Env_Profile.providers.<provider_id>.
+    artifact_roots:
+      canonical_runtime_roots:
+        provider_instances: provider_instances/
+        env_profiles: env_profiles/
+      optional_data_roots:
+        - fixtures
+        - expected_results
+        - queries
+        - actual_samples
+      deprecated_compatibility_roots:
+        execution_profiles: compatibility_reader_only
+        environment_bindings: compatibility_reader_only
+      authoring_rule: New v0.2.7 samples must not declare artifact_roots.execution_profiles or artifact_roots.environment_bindings.
+  child_suite_aggregation:
+    purpose: Compatibility aggregation for checked-in child suite manifests; this is not the primary multi-test runner model.
+    compatibility_note: New multi-test execution should use suite tests[] with one shared suite-level profile.
+    required_fields:
+      - contract_version
+      - suite_id
+      - profile
+      - child_suites
+    child_suite_required_fields:
+      - id
+      - ref
+      - profile
+    child_suite_profile_scope: legacy_child_suite_profile_for_compatibility_only
+    child_suite_optional_fields:
+      expected_status:
+        default: passed
+        allowed_values: [passed, failed]
+    ref_rules:
+      - Child suite refs are relative to the aggregation manifest directory.
+      - Child suite refs must remain under the aggregation manifest directory after path normalization.
+      - Child suite ids must be unique within one aggregation manifest.
+    dry_run_behavior:
+      - Validate all child suites and print provider_instances_used, provider_types_used, and child_suites.
+      - Do not invoke provider runtime or create provider execution evidence.
+    run_outputs:
+      - suite_summary_json
+      - suite_summary_yaml
+      - allure_results_dir
+      - expected_failure_count
+selection_modes:
+  - test_id
+  - suite
+  - tag
+  - profile
+optional_fields:
+  provider_contract_resolution:
+    default_mode: framework_builtin
+    allowed_modes: [framework_builtin, suite_override, snapshot]
+    custom_provider_contracts_default: custom-provider-contracts
+    allowed_provider_types_required_for_custom_types: true
+must_not_contain:
+  - provider overrides
+  - product topology inference
+validation_output_fields:
+  - ap
+  - file_path
+  - field_path
+  - suite_id
+  - selection_mode
+  - severity
+  - reason
+  - owner_action
+evidence_outputs:
+  - suite_selection_report
+  - empty_selection_blocking_report
+unsupported_behavior:
+  unknown_test_id: block_before_execution
+  unknown_tag: block_before_execution
+  incompatible_profile: block_before_execution
+  provider_override: block_before_execution
+failure_classification: schema_error

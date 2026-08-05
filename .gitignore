@@ -245,3 +245,4 @@ schema/*.json
 !schema/*.example.json
 schema/*.ddl
 !schema/example.ddl
+out/

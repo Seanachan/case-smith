@@ -1,0 +1,129 @@
+contract_version: v0.2
+artifact: test_case_dsl
+status: framework_owned_current_stage
+version_compatibility:
+  supported_versions: [v0.2]
+  legacy_read_versions: [v1]
+  unsupported_version_behavior: block_before_execution
+  legacy_promotion_behavior: legacy artifacts may be read only through explicit compatibility translation and must not be written as new v0.2 artifacts
+required_sections:
+  - dsl_version
+  - test_case_id
+  - status
+  - revision
+  - targets.<target>.provider_id
+  - execute
+  - verify
+  - evidence.required
+  - runtime.timeout
+  - runtime.retry
+conditional_sections:
+  source_refs: optional traceability metadata; runtime must not depend on or resolve source refs
+  data: allowed as an optional lifecycle-neutral reviewed data source catalog
+  setup.operations: required when precondition data or mutated state is needed
+  cleanup.operations: required when setup mutates state and cleanup is not declared inline
+source_ref_rules:
+  required: false
+  runtime_resolution: prohibited
+  missing_source_ref_blocks_runtime: false
+  prohibited_execution_artifact_keys:
+    - expected_result
+    - expected_results
+    - fixture
+    - fixtures
+    - payload
+    - sql
+    - query
+    - mock_mapping
+    - mock_mappings
+    - data
+data_rules:
+  allowed: true
+  required_when_data_namespace_refs_are_used: true
+  lifecycle_categories: prohibited
+  ref_namespace_prefix: data
+  reference_format: ${data.<name>}
+  source_fields:
+    - ref
+    - value
+  exactly_one_source_field_required: true
+  prohibited_legacy_sections:
+    - data_binding
+    - datasets
+    - fixtures
+    - expected_results
+    - db_seed
+    - db_cleanup
+    - mock_stubs
+  prohibited_values:
+    - raw_secret
+    - endpoint_url
+    - jdbc_url
+    - broker_url
+target_rules:
+  provider_id_required: true
+  profile_required: false
+  selected_profile_source: cli_or_suite_manifest
+  endpoint_topic_db_credential_values: prohibited
+operation_rules:
+  setup_execute_cleanup_operations_must_exist_in_provider_contract: true
+  output_refs_must_exist_in_provider_contract: true
+input_rules:
+  operation_inputs_use_map_shape: true
+  input_values_use_ref_or_value: true
+  input_key_must_be_allowed_by_referenced_provider_contract: true
+  applies_to:
+    - setup.operations[].inputs
+    - execute.operations[].inputs
+    - verify.checks[].inputs
+    - cleanup.operations[].inputs
+  reviewed_parameter_sets_are_referenced_by_ref: true
+validation_output_fields:
+  - ap
+  - file_path
+  - field_path
+  - test_case_id
+  - provider_id
+  - provider_type
+  - profile
+  - source_refs
+  - severity
+  - blocking_scope
+  - reason
+  - owner_action
+evidence_outputs:
+  - validation_report
+  - dry_run_report
+prohibited_sections:
+  - data_binding
+  - datasets
+  - fixtures
+  - expected_results
+  - db_seed
+  - db_cleanup
+  - mock_stubs
+  - rp_id
+  - ac_id
+  - execution_target
+  - package_inputs
+  - oracles
+  - steps
+  - assertions
+  - evidence_required
+  - policy
+  - approval_status
+  - scenario
+  - waiver
+  - release_gate
+  - risk_approval
+unsupported_behavior:
+  missing_required_section: block_before_execution
+  unsupported_enum: block_before_execution
+  prohibited_section: block_before_execution
+  unresolved_reference: block_before_provider_dispatch
+  missing_provider_instance: block_before_provider_dispatch
+  missing_provider_contract: block_before_provider_dispatch
+  invalid_input_key: block_before_provider_dispatch
+  missing_output_ref: block_before_provider_dispatch
+  raw_secret: block_before_execution
+failure_classification: schema_error

@@ -1,0 +1,113 @@
+contract_version: v0.2
+artifact: result
+status: framework_owned_current_stage
+version_compatibility:
+  supported_versions: [v0.2]
+  unsupported_version_behavior: run_not_complete
+required_fields:
+  - framework_version
+  - dsl_version
+  - suite_id
+  - batch_id
+  - run_id
+  - test_case_id
+  - test_count
+  - status
+  - profile
+  - environment
+  - start_time
+  - end_time
+  - duration_ms
+  - timestamps
+  - test_results
+  - provider_results
+  - steps
+  - verify_results
+  - evidence_refs
+  - failure
+optional_fields:
+  - labels
+  - source_refs
+  - parameter_case_id
+  - provider_summary
+  - step_results
+  - evidence_index_ref
+  - provider_evidence_refs
+  - masking
+  - provider_id
+  - provider_type
+  - runtime_mode
+  - base_url
+  - dialect
+  - subject
+  - topic
+  - queue
+result_model:
+  version_identity:
+    description: >
+      framework_version is the immutable framework artifact release version, for example 0.2.5.
+      dsl_version remains the public DSL contract version, for example v0.2.
+  standard_suite_run:
+    description: Standard v0.2 runtime output for an execution-started suite.
+    required_when_execution_started:
+      - suite_id
+      - batch_id
+      - run_id
+      - test_count
+      - test_results
+    semantics:
+      - One result JSON represents one selected suite execution under one Env_Profile.
+      - batch_id and run_id identify the suite execution context.
+      - Any result with non-empty provider_results, batch_id, run_id, test_count, or test_results is treated as a standard suite run by report and evidence validation.
+      - test_count equals the number of selected test cases represented by test_results.
+      - test_count and test_results are both required for standard suite run results.
+      - test_count must be a positive JSON integer value, not a quoted numeric string, equal to test_results.length.
+      - test_results[] records per-test status, provider_id, provider_type, and failure metadata when applicable.
+      - Each test_results[] entry must be an object.
+      - Each test_results[] entry requires test_case_id, status, and profile.
+      - Allowed per-test status values are passed, failed, and blocked.
+      - provider_summary[] may summarize provider_id, provider_type, runtime_mode, status, and non-secret destination metadata for suite-level display.
+      - step_results[] mirrors steps[] when runtimes need a stable alias for report renderers.
+      - evidence_index_ref points to the evidence index used by report and evidence validation when available.
+      - provider_evidence_refs[] lists provider-produced evidence refs; evidence_refs[] remains the complete evidence list.
+      - Multi-provider suite results must use provider_summary[] and provider_results[]; they must not represent the whole suite with first-provider top-level provider_id/provider_type/destination fields.
+    report_validation:
+      - mismatched test_count and test_results length must fail report publication.
+      - missing required test_results[] fields must fail report publication.
+      - provider_evidence_refs[] containing framework logs, batch summaries, assertion diffs, or expected artifacts must fail report publication.
+      - multi-provider standard results missing provider_summary[] must fail report and evidence validation; multi-provider status may be inferred from test_results[] or provider_results[].
+  compatibility:
+    top_level_provider_identity: accepted_for_single_provider_result_display_only
+provider_result_required_fields:
+  - provider_id
+  - provider_type
+  - profile
+  - runtime_mode
+  - resolved_operation_result
+  - release_evidence_eligible
+validation_output_fields:
+  - ap
+  - file_path
+  - field_path
+  - test_case_id
+  - run_id
+  - status
+  - provider_id
+  - provider_type
+  - profile
+  - runtime_mode
+  - failure_classification
+  - severity
+  - reason
+  - owner_action
+evidence_outputs:
+  - result_json
+  - result_schema_validation_report
+unsupported_behavior:
+  missing_required_field: run_not_complete
+  unclassified_failure: run_not_complete
+  raw_secret: block_result_publication
+  invalid_status: run_not_complete
+  missing_runtime_mode: run_not_complete
+  mock_release_evidence_claim: block_result_publication
+failure_classification: framework_error
