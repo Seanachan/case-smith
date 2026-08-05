@@ -67,7 +67,10 @@ Regression Test Framework 的 test cases(YAML 為主 + SQL/JSON seed data)。
 | `schema/example.ddl` | 對應的 DB2 風格 DDL(.mjs parser 參考輸入) | 定稿 |
 | `domain/domain.example.yaml` | exact / pattern / ignore_in_snapshot 三段範例 | 定稿的形式 |
 | `pipeline/test_seed_planner.py` | 55 tests:閉包、topo、環(含自我參照/鑽石)、三層 fallback、hint 詞彙表、slot、共享配號、ID 區間、emit_sql、fail-fast raise 路徑、all-or-nothing 回滾、型別別名 quoting(經三輪審修 + 獨立驗證收案,見 docs/CONTRACTS.md「行為保證」) | 全過(主線實跑) |
-| `orchestrator/` | (平行 session 重建)失敗分類重試 + ModelSlot 介面 + opencode CLI transport | 自報 25 tests 過 |
+| `pipeline/render_artifacts.py` + `contract_check.py` + `cli.py` | (平行 session)ARTF v0.2 四種檔 renderer(含 ignore_in_snapshot 落地於 verify SQL)+ 契約檢查 + conductor CLI(spec+schema → bundle 一條指令) | pipeline 全套 86 tests 過 |
+| `pipeline/flaky_gate.py` | 亂序 N 次結果**判定器**(stable/flaky 踢/blocked 人工/missing 踢;一致 failed=真紅保留),`python -m pipeline.flaky_gate` | 同上 |
+| `pipeline/trust_gate.py` | 亂序**洗牌器**(確定性 seed,第 0 份保序),`python -m pipeline.trust_gate shuffle`;判定統一走 flaky_gate | 同上 |
+| `orchestrator/` | (平行 session 重建)失敗分類重試 + ModelSlot 介面 + opencode CLI transport | 25 tests 過(主線實跑) |
 | `extractors/dotnet/` | **v1 完成**(2026-08-05):syntax-level VB 抽取器(C#,Microsoft.CodeAnalysis.VisualBasic),CLI `--input <dir> --output <file>`;抽簽章/branch_count/tables+operations/condition_columns(單表才掛表名)/endpoints/dynamic_sql 旗標;輸出契約見 docs/CONTRACTS.md「spec card」節,範例正本 `extractors/spec_card.example.json`(10 methods,fixture 實跑產出)。**不用** MSBuildWorkspace(理由見 CONTRACTS);semantic 資料流標 v2 | dotnet test 13/13(主線實跑) |
 
 已知限制:**組合(多欄)FK 未支援**——closure/topo/ID 引用只認單欄 FK,

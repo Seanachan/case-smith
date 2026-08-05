@@ -15,12 +15,10 @@
 
 ## 取得程式碼
 
-傳輸方式待定（git remote push/pull、`git bundle`、或整包 zip，三選一，主線之後補）。
-
-> 目前本機 repo 領先 `origin/main` 5 個 commit，且有尚未 commit 的異動（多個平行
-> session 產出的檔案，例如 `pipeline/trust_gate.py`、`extractors/dotnet/
-> CaseSmith.Extractor/` 等仍是 untracked）。打包前先確認要不要先 commit，避免
-> 漏帶檔案；`git status` 是最後一道檢查。
+已定案（2026-08-05）：push 到 GitHub private repo
+（`https://github.com/Seanachan/case-smith.git`），公司側 `git clone`。
+前提是公司網路能到 github.com；不能的話 fallback 是 `git bundle` 單檔傳輸。
+clone 完先 `git log --oneline -5` 對照本機,確認拿到的是最新 main。
 
 ## 驗證安裝
 
@@ -34,11 +32,10 @@ cd extractors/dotnet && dotnet test
 
 本機（2026-08-05）實跑的預期結尾，作為比對基準：
 
-1. `uv run pytest pipeline/ -q` → `93 passed in 0.20s`
+1. `uv run pytest pipeline/ -q` → `86 passed`
    （涵蓋 `test_cli`／`test_e2e_fake`／`test_flaky_gate`／`test_render_contract`／
-   `test_seed_planner`／`test_trust_gate` 六個檔；`HANDOFF.md` §5 目前只記到
-   `test_seed_planner.py` 55 tests，其餘是後續平行工作的產物，尚未補進 §5——
-   **數字以實跑為準，不是以 HANDOFF 文字為準**。）
+   `test_seed_planner`／`test_trust_gate` 六個檔。**數字以實跑為準**;若公司側
+   數字更高,通常是 main 又進了新測試,對 `git log` 即知。）
 2. `uv run python -m unittest discover -s orchestrator/tests -t .` →
    `Ran 25 tests in 0.004s` / `OK`
 3. `cd extractors/dotnet && dotnet test` → 兩個測試專案分別
@@ -62,21 +59,24 @@ cd extractors/dotnet && dotnet test
    輸出對照 `CONTRACTS.md`「spec card 契約」人工抽查幾筆。
 3. **planner 接真 schema 跑**：拿真 schema 資料替換掉 `test_seed_planner.py` 裡的
    example schema 再驗一輪，確認 FK 閉包／拓撲排序沒有意外 raise。
-4. **framework 亂序 3 次實跑餵 trust_gate**：這一步需要 Java＋DB2 環境，本機只能把
-   harness 備好（`python -m pipeline.trust_gate {shuffle,compare}`），沒辦法在本機
-   跑完整流程——公司環境是第一次真正跑這條路徑。
-5. **mutant 殺傷率**：`extractors/dotnet/CaseSmith.Mutator` 產生 mutant 之後，交給
+4. **block.md → block.yaml 錨點轉換**：帶回的 block markdown 由**開發期強模型＋人審**
+   轉成 `block.yaml` 錨點（一次性;流程與格式見 `REQ_BLOCK_TRACING.md`）。7–8B 限制
+   只套執行期,這步用強模型**合規**（HANDOFF §1）。
+5. **framework 亂序 3 次實跑**：洗牌 `python -m pipeline.trust_gate shuffle`,跑完
+   N 份 result 用 `python -m pipeline.flaky_gate run*/result.json` 判定
+   （stable/flaky 踢除/blocked 人工）。這一步需要 Java＋DB2 環境,公司環境是
+   第一次真正跑這條路徑。
+6. **mutant 殺傷率**：`extractors/dotnet/CaseSmith.Mutator` 產生 mutant 之後，交給
    ARTF suite 重新 build＋run 並統計殺傷率；這一步是使用者側 framework 的事，
    CaseSmith 只負責出 mutant，不負責跑。
 
-## transport 換裝
+## transport
 
-`opencode` CLI（目前唯一實作的 transport）需要登入、走網路，公司內部大概率沒有。
-好消息是 orchestrator 把模型呼叫收在一個可插拔的 `ModelClient` protocol
-（`orchestrator/client.py`）——新 transport 只需要實作「吃一個 prompt 字串、回一個
-字串」這一個方法，參考現成的 `FakeClient`（測試用，不打網路）與 `OpencodeClient`
-（真實 shell-out 範例）兩種寫法即可。等 `INTAKE_CHECKLIST.md` 第「模型 serving」項
-（runtime／API 形狀／模型名）到位再動手寫，先別猜 API 形狀。
+已確認（2026-08-05）：**公司內也用 opencode CLI**——現成的 `OpencodeClient`
+直接用,只需換模型名（`opencode models` 列出可用清單）。不用寫新 transport。
+若日後換 serving 方式:orchestrator 的 `ModelClient` protocol
+（`orchestrator/client.py`）可插拔,新 client 只需實作「吃 prompt 字串、回字串」
+一個方法,參考 `FakeClient` 與 `OpencodeClient` 兩種寫法。
 
 ## 紅線
 

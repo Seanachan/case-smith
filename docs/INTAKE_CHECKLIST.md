@@ -5,18 +5,28 @@
 [`CONTRACTS.md`](./CONTRACTS.md)、[`REQ_BLOCK_TRACING.md`](./REQ_BLOCK_TRACING.md)；
 本檔只是把它們對「要帶什麼資料」的要求收成一張表，衝突以那三份為準。
 
-## 系統邊界
+## 系統邊界（block 輸入，對齊 `REQ_BLOCK_TRACING.md` 已定案格式）
 
-- [ ] **系統區塊（block）清單**：每個 block 對應哪個/哪些 `.exe` 或服務、各自讀寫
-      哪些 DB（哪個 schema/instance）、對外打哪些 API。→ 用來選「這次要幫哪個 block
-      產測試」，也是 `REQ_BLOCK_TRACING.md` 定義的 block.md `anchors` 的資料來源。
-- [ ] **block 行為描述**（自然語言即可，不用列全會用到的表）：一段話寫「這個 block
-      在做什麼」＋至少一個錨點（函式名，或「檔案＋行號範圍」）。→ extractor 從錨點做
-      呼叫鏈 transitive closure，聯集出實際碰到的表/欄/endpoint；markdown 描述本身是
-      **驗收基準**（coverage 報告會拿實跑結果跟這段話比對，落差在這裡現形，早於假綠
-      測試）。
-- [ ] **跨 schema/DB instance 的情況**：block 若橫跨多個 schema，這些 schema 之間有沒有
-      FK 關係？→ 影響 closure 要不要跨 schema 走，`REQ_BLOCK_TRACING.md` 標記為待釐清項。
+輸入單位是 **block**（一段業務描述），不是單一方法；事前不知道它會用到哪些
+schema/表/服務，只知道它在做什麼。流程定案為 **block.md →（開發期強模型＋人審，
+一次性）→ block.yaml 錨點**——7–8B 限制只套執行期，這段轉換合規。明天的 markdown
+每個 block 要有：
+
+- [ ] **(a) 自然語言行為描述**：這個 block 在做什麼、涉及哪個/哪些 `.exe` 或服務、
+      讀寫哪些 DB、對外打哪些 API（HTTP；**gRPC 已裁定不測**，future work，不用附
+      `.proto`）。→ 對應 block.yaml 的 `description` 欄位，**不進結構決策**（鐵律），
+      是給人/報告/coverage 對照用的自然語言。
+- [ ] **(b) 盡量給錨點線索**：函式名（可帶命名空間前綴），或「檔案＋行號範圍」。
+      **沒有也行**——`anchors` 不用齊全是設計上的特性，漏的靠 extractor 沿呼叫鏈做
+      transitive closure 補；但沒錨點時只能拿 md 關鍵詞去對 spec card 方法清單做
+      候選建議、真人挑，**人工配對成本高**，能給就給。
+- [ ] **(c) 已知的表/服務線索**：哪怕不齊全，先列出你知道這個 block 會碰到的表、
+      會呼叫的 endpoint。→ 當 **coverage 報告的對照基準**：extractor 從錨點做完
+      closure 後吐出「實際碰到的表(操作)＋endpoint」清單，跟這裡的線索/整段描述
+      比對，落差（描述錯／錨點漏）在這裡現形，早於假綠測試。
+- [ ] **跨 schema/DB instance 的情況**：block 若橫跨多個 schema，這些 schema 之間
+      **有沒有 FK 關係**？→ `REQ_BLOCK_TRACING.md` 明列的待釐清項，直接影響 closure
+      要不要跨 schema 走；沒有這個答案，多 schema 的 block 沒辦法安全做閉包。
 
 ## DB2 schema
 
@@ -53,11 +63,10 @@
 
 ## 模型 serving
 
-- [ ] **7–8B 模型在公司內部怎麼 serve**：哪個 runtime（vLLM／Ollama／TGI／自建
-      OpenAI-compatible endpoint…）、API 形狀、模型的確切名稱。→ 決定要不要新寫一個
-      `ModelClient`（`orchestrator/client.py` 的 protocol）；目前只有 `opencode` CLI
-      這條 transport，公司內部大概率要換掉，細節見
-      [`CORPORATE_SETUP.md`](./CORPORATE_SETUP.md) 的「transport 換裝」節。
+- [ ] **公司內 opencode 的 7–8B 模型名**（已確認公司內也用 opencode CLI,
+      `OpencodeClient` 直接沿用）：markdown 只需記「`opencode models` 裡那個
+      7–8B 模型的確切名稱」+ 有沒有登入/網路限制。→ orchestrator 換個模型名就通,
+      細節見 [`CORPORATE_SETUP.md`](./CORPORATE_SETUP.md) 的「transport」節。
 
 ## 去敏感化
 
