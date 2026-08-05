@@ -49,7 +49,7 @@ def test_bundle_passes_both_contracts(bundle):
 
 def test_seed_base_parent_table_first(bundle):
     sql = bundle["fixtures/seed_base.sql"]
-    assert sql.index("INSERT INTO T_CUSTOMER") < sql.index("INSERT INTO T_ORDER")
+    assert sql.index("INSERT INTO APP.T_CUSTOMER") < sql.index("INSERT INTO APP.T_ORDER")
 
 
 def test_case_seed_contains_model_value(bundle):
@@ -73,7 +73,7 @@ def test_verify_sql_ignore_column_left_out(schema):
 
 def test_cleanup_child_table_first_and_range_locked(schema, bundle):
     sql = bundle["fixtures/cleanup.sql"]
-    assert sql.index("DELETE FROM T_ORDER ") < sql.index("DELETE FROM T_CUSTOMER ")
+    assert sql.index("DELETE FROM APP.T_ORDER ") < sql.index("DELETE FROM APP.T_CUSTOMER ")
     assert "BETWEEN 900000 AND 999999" in sql
 
 

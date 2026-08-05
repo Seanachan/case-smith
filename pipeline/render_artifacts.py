@@ -104,7 +104,7 @@ def render_verify_sql(
             continue
         conds.append(f"{col} = {_sql_literal(val)}")
     return (
-        f"SELECT {pk} FROM {case_row.table}\n"
+        f"SELECT {pk} FROM {table.qualified_name}\n"
         + "WHERE " + "\n  AND ".join(conds) + "\n"
     )
 
@@ -117,7 +117,9 @@ def render_cleanup_sql(schema: Schema, tables_parent_first: Iterable[str]) -> st
         if len(table.primary_key) != 1:
             continue  # 無單欄 PK 的表不在自動 cleanup 範圍(與 planner 同限制)
         pk = table.primary_key[0]
-        out.append(f"DELETE FROM {t} WHERE {pk} BETWEEN {ID_START} AND {ID_END};")
+        out.append(
+            f"DELETE FROM {table.qualified_name} WHERE {pk} BETWEEN {ID_START} AND {ID_END};"
+        )
     return "\n".join(out) + "\n"
 
 

@@ -181,15 +181,15 @@ docker exec casesmith-db2 su - db2inst1 -c \
 
 # 3. driver(Maven Central 的 com.ibm.db2:jcc → ARTF 的 drivers/db2/jcc.jar)
 # 4. 跑
-export JDBC_CONNECTION='jdbc:db2://localhost:50000/TESTDB:user=db2inst1;password=casesmith;currentSchema=APP;'
+export JDBC_CONNECTION='jdbc:db2://localhost:50000/TESTDB:user=db2inst1;password=casesmith;'
 java -jar target/spec-driven-auto-regression-0.2.7.jar run \
   --suite <case-smith>/out/<run>/bundle/suite_manifest.yaml \
   --profile local_fake --driver-path drivers/db2/jcc.jar
 ```
 
-已知 workaround:`currentSchema=APP` 是因為 renderer 目前吐**裸表名**
-(SQLCODE=-204 教訓);正解 = SQL 加 `SCHEMA.TABLE` 前綴,排在待辦
-(見 REQ_BLOCK_TRACING.md 缺口 2,多 schema 時必修)。
+(2026-08-05 晚)seed/verify/cleanup SQL 已一律帶 `SCHEMA.TABLE` 前綴
+(`Table.qualified_name`),不再依賴連線字串的 `currentSchema`——
+SQLCODE=-204 的正解,真 DB2 驗證通過。
 
 ## 測試(改完任何元件跑這兩條)
 

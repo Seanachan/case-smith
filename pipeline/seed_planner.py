@@ -56,6 +56,12 @@ class Table:
                 return c
         raise KeyError(f"{self.name} 沒有欄位 {name}")
 
+    @property
+    def qualified_name(self) -> str:
+        """SQL 用的完整表名:有 schema 前綴就帶上(SCHEMA.TABLE)。
+        裸表名會被 DB 解到連線使用者的預設 schema——SQLCODE=-204 實測教訓。"""
+        return f"{self.schema_name}.{self.name}" if self.schema_name else self.name
+
 
 @dataclass(frozen=True)
 class Schema:
@@ -744,14 +750,16 @@ def emit_sql(plan: SeedPlan, schema: Schema) -> str:
         overriding = (
             " OVERRIDING SYSTEM VALUE" if any(table.column(c).identity for c in cols) else ""
         )
-        lines.append(f"INSERT INTO {table.name} ({col_list}){overriding} VALUES ({val_list});")
+        lines.append(
+            f"INSERT INTO {table.qualified_name} ({col_list}){overriding} VALUES ({val_list});"
+        )
 
     for du in plan.deferred_updates:
         table = schema.tables[du.table]
         pk_val = _format_value(table, du.pk_column, du.pk_value)
         fk_val = _format_value(table, du.fk_column, du.fk_value)
         lines.append(
-            f"UPDATE {du.table} SET {du.fk_column} = {fk_val} "
+            f"UPDATE {table.qualified_name} SET {du.fk_column} = {fk_val} "
             f"WHERE {du.pk_column} = {pk_val};"
         )
 

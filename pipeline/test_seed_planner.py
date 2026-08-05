@@ -493,8 +493,8 @@ def test_emit_sql_not_null_filled_and_insert_order(ecommerce_schema: Schema):
     insert_lines = [l for l in sql.splitlines() if l.startswith("INSERT")]
 
     assert len(insert_lines) == len(plan.order)
-    assert insert_lines[0].startswith("INSERT INTO T_CUSTOMER")
-    assert insert_lines[1].startswith("INSERT INTO T_ORDER")
+    assert insert_lines[0].startswith("INSERT INTO APP.T_CUSTOMER")
+    assert insert_lines[1].startswith("INSERT INTO APP.T_ORDER")
 
     for row in plan.rows:
         table = ecommerce_schema.tables[row.table]
@@ -516,7 +516,7 @@ def test_emit_sql_deferred_update_after_inserts(ecommerce_schema: Schema):
 
     assert update_idx, "應該要有 deferred UPDATE"
     assert max(insert_idx) < min(update_idx)
-    assert "UPDATE T_ACCOUNT SET PROFILE_ID" in sql
+    assert "UPDATE APP.T_ACCOUNT SET PROFILE_ID" in sql
 
 
 # ---------------------------------------------------------------------------
