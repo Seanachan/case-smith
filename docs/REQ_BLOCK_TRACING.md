@@ -51,7 +51,19 @@ anchors:            # 呼叫圖起點,「不用齊全」是特性:漏的靠 clos
 - **coverage 報告是驗收機制**:extractor 吐「實際碰到的表(操作)+ endpoint」
   清單,人對照 description 找落差(描述錯 / 錨點漏,在這裡現形,早於假綠測試)。
 
+## 輸入現實(2026-08-05 補充)
+
+- 使用者手上實際是**一批描述 block 行為的 markdown 檔**,不是 block.yaml。
+- 流程定為:`block.md →(開發期強模型 + 人審,一次性)→ block.yaml 錨點`。
+  NL→錨點的對應由強模型做,**合規**——7–8B 限制只套執行期(HANDOFF §1)。
+- md 沒提函式名時:拿 md 關鍵詞對 spec card 方法清單做候選建議,人挑。
+- markdown 維持 source of truth;coverage 報告對照對象就是它。
+
+## 範圍裁剪
+
+- **gRPC 暫不測**(2026-08-05 使用者裁定)→ 缺口 3 縮為 HTTP only,
+  `.proto` 問題消失。gRPC 標 future work。
+
 ## 待使用者釐清
 
 - 跨 schema 有沒有 FK(影響閉包要不要跨 schema 走)?
-- gRPC 的 contract(.proto)拿得到嗎?
