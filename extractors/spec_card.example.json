@@ -1,0 +1,297 @@
+{
+  "source": {
+    "language": "vb.net",
+    "extractor": "casesmith-dotnet",
+    "version": 1
+  },
+  "methods": [
+    {
+      "id": "CaseSmith.Fixtures.Dao.CustomerRepository.DeleteCustomer",
+      "file": "SingleTableCrud.vb",
+      "line": 25,
+      "summary": "",
+      "signature": {
+        "name": "DeleteCustomer",
+        "params": [
+          {
+            "name": "custId",
+            "type": "Integer"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "DELETE"
+          ]
+        }
+      ],
+      "condition_columns": [
+        "T_CUSTOMER.CUST_ID"
+      ],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Dao.CustomerRepository.GetActiveCustomer",
+      "file": "SingleTableCrud.vb",
+      "line": 10,
+      "summary": "",
+      "signature": {
+        "name": "GetActiveCustomer",
+        "params": [
+          {
+            "name": "custId",
+            "type": "Integer"
+          }
+        ],
+        "returns": "Object"
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "SELECT"
+          ]
+        }
+      ],
+      "condition_columns": [
+        "T_CUSTOMER.COUNTRY_CD",
+        "T_CUSTOMER.CUST_ID"
+      ],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Dao.CustomerRepository.InsertCustomer",
+      "file": "SingleTableCrud.vb",
+      "line": 21,
+      "summary": "",
+      "signature": {
+        "name": "InsertCustomer",
+        "params": [
+          {
+            "name": "custId",
+            "type": "Integer"
+          },
+          {
+            "name": "name",
+            "type": "String"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "INSERT"
+          ]
+        }
+      ],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Dao.CustomerRepository.Touch",
+      "file": "SingleTableCrud.vb",
+      "line": 30,
+      "summary": "",
+      "signature": {
+        "name": "Touch",
+        "params": [
+          {
+            "name": "id",
+            "type": "Object"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Dao.CustomerRepository.UpdateCustomerName",
+      "file": "SingleTableCrud.vb",
+      "line": 16,
+      "summary": "",
+      "signature": {
+        "name": "UpdateCustomerName",
+        "params": [
+          {
+            "name": "custId",
+            "type": "Integer"
+          },
+          {
+            "name": "name",
+            "type": "String"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "UPDATE"
+          ]
+        }
+      ],
+      "condition_columns": [
+        "T_CUSTOMER.CUST_ID"
+      ],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Dao.OrderQueryService.FindOrdersByStatus",
+      "file": "MultiTableJoin.vb",
+      "line": 12,
+      "summary": "",
+      "signature": {
+        "name": "FindOrdersByStatus",
+        "params": [
+          {
+            "name": "statusCd",
+            "type": "String"
+          }
+        ],
+        "returns": "Object"
+      },
+      "branch_count": 0,
+      "tables": [
+        {
+          "name": "T_CUSTOMER",
+          "operations": [
+            "SELECT"
+          ]
+        },
+        {
+          "name": "T_ORDER",
+          "operations": [
+            "SELECT"
+          ]
+        }
+      ],
+      "condition_columns": [],
+      "unqualified_condition_columns": [
+        "CUST_ID",
+        "STATUS_CD"
+      ],
+      "endpoints": [],
+      "dynamic_sql": true
+    },
+    {
+      "id": "CaseSmith.Fixtures.Ops.OrderProcessor.ClassifyOrder",
+      "file": "MixedFeatures.vb",
+      "line": 12,
+      "summary": "",
+      "signature": {
+        "name": "ClassifyOrder",
+        "params": [
+          {
+            "name": "statusCd",
+            "type": "String"
+          },
+          {
+            "name": "qty",
+            "type": "Integer"
+          }
+        ],
+        "returns": "String"
+      },
+      "branch_count": 7,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Ops.OrderProcessor.FetchOrderStatus",
+      "file": "MixedFeatures.vb",
+      "line": 46,
+      "summary": "",
+      "signature": {
+        "name": "FetchOrderStatus",
+        "params": [
+          {
+            "name": "orderId",
+            "type": "Integer"
+          }
+        ],
+        "returns": "String"
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [
+        {
+          "http_method": "GET",
+          "url": "https://api.example.internal/orders/status"
+        }
+      ],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Ops.OrderProcessor.NoOp",
+      "file": "MixedFeatures.vb",
+      "line": 52,
+      "summary": "",
+      "signature": {
+        "name": "NoOp",
+        "params": [],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [],
+      "dynamic_sql": false
+    },
+    {
+      "id": "CaseSmith.Fixtures.Ops.OrderProcessor.NotifyOrderCreated",
+      "file": "MixedFeatures.vb",
+      "line": 41,
+      "summary": "",
+      "signature": {
+        "name": "NotifyOrderCreated",
+        "params": [
+          {
+            "name": "orderId",
+            "type": "Integer"
+          }
+        ],
+        "returns": ""
+      },
+      "branch_count": 0,
+      "tables": [],
+      "condition_columns": [],
+      "unqualified_condition_columns": [],
+      "endpoints": [
+        {
+          "http_method": "POST",
+          "url": "https://api.example.internal/orders/notify"
+        }
+      ],
+      "dynamic_sql": false
+    }
+  ]
+}
