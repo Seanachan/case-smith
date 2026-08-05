@@ -50,6 +50,7 @@ domain/              domain.yaml — 跨專案時唯一要改的地方
 | Case 命名     | `Characterize_` 前綴——標示「現況」而非「正確」                       |
 | patch 策略    | 只回傳單一欄位 `{"field","value"}`，Python 替換；不重生整份 artifact |
 | Expected 來源 | golden master（跑舊碼抓現況），模型不參與                            |
+| 本機執行 DB   | 一律真 DB2（Docker container）；ephemeral H2 已移除（復活看 dafd4e6） |
 
 ## 目前狀態與優先序
 
