@@ -18,3 +18,11 @@ ignore_in_snapshot:
   - "*.CREATED_AT"
   - "*.UPDATED_AT"
   - T_ORDER.LAST_LOGIN_TS
+
+# 給 ModelSlot.hint 用的欄位語意描述(給模型看,不影響填值邏輯)。
+# 查詢順序比照 exact/pattern:精確 key 命中優先,沒中再依宣告順序 fnmatch,
+# 都沒中就是空字串——這個 dict 裡精確 key 和 pattern 可以混放。
+hints:
+  T_ORDER.STATUS_CD: "訂單狀態碼:O=開立 S=出貨 C=關閉"
+  T_CUSTOMER.COUNTRY_CD: "客戶所在國別,ISO 3166-1 兩碼英文縮寫"
+  "*.LOGIN_NM": "系統登入帳號,全大寫英文"
