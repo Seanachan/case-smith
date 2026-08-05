@@ -53,12 +53,13 @@ domain/              domain.yaml — 跨專案時唯一要改的地方
 
 ## 目前狀態與優先序
 
-詳見 `HANDOFF.md`。摘要：
+詳見 `docs/HANDOFF.md`（唯一事實來源）。摘要：
 
-1. 接真實 schema 到 `pipeline/seed_planner.py`
-2. 寫 Roslyn extractor（C#，獨立 CLI）
-3. orchestrator 改接 planner 的 ModelSlot
-4. 信任閘門：snapshot 欄位排除、亂序跑三次、mutation 篩選
+- **已完成**：seed planner 定案、renderer + 信任閘門三項（欄位排除／亂序／mutation）、
+  extractor v1.1 + Mutator、orchestrator 接 planner ModelSlot、E2E 已用真模型
+  （opencode/big-pickle）+ 真 DB2 跑通，bundle 契約零違規。
+- **接下來**：extractor v2（block 呼叫鏈閉包，見 `docs/REQ_BLOCK_TRACING.md`）、
+  公司側環境接真實 schema 實跑、block.md → block.yaml 轉換。
 
 ## 注意事項
 

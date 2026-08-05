@@ -164,6 +164,27 @@ context 注入——理解產物生產在開發期,消費時只有一行,不違�
 legacy .NET Framework 的 .sln 在 mac/Docker 上大概率載入失敗,而常數 SQL、簽章、
 分支數、endpoint 常數全部語法層可得;semantic 需求(跨方法資料流)標 v2。
 
+## Mutator manifest 契約 v1
+
+`extractors/dotnet/CaseSmith.Mutator` 的輸出(`manifest.json` + `mutants/<id>/` 突變樹副本):
+
+```json
+{
+  "source": {"language": "vb.net", "tool": "casesmith-mutator", "version": 1},
+  "mutants": [
+    {"id": "<file>_<line>_<op>_<序號>", "file": "相對路徑.vb", "line": 42,
+     "operator": "compare_invert | arithmetic_swap | boolean_flip",
+     "original": "a >= b", "mutated": "a < b"}
+  ],
+  "skipped": []
+}
+```
+
+規則:一個 mutant 恰一處突變;字串 literal 一律不碰(SQL 常數安全);突變後
+必須仍能 parse,失敗者進 `skipped` 不靜默丟棄;manifest 依 id 排序,同輸入
+輸出逐位元相同。跑 mutant(rebuild + run suite)與殺傷率統計是使用者側
+framework 的事,本工具只產 mutants。
+
 ## ARTF 輸出契約
 
 **已抽取完成 → 正本見 [`ARTF_CONTRACT.md`](./ARTF_CONTRACT.md)**（9 題逐項附
