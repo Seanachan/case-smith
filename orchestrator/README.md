@@ -3,6 +3,39 @@
 Deterministic harness around a 7–8B model. The model only fills semantic
 values (ModelSlot); structure, ordering, and formats are decided by code.
 
+## Usage
+
+```python
+from orchestrator import Orchestrator, OpencodeClient, FakeClient, MetricsLog
+
+# real model via opencode CLI (must be logged in; `opencode models` lists names)
+orch = Orchestrator(
+    OpencodeClient(model="opencode/big-pickle"),   # "provider/model" format
+    metrics=MetricsLog("out/runs.jsonl"),          # optional; JSONL per attempt
+)
+
+# slots come from the planner (SeedPlanner(...).plan_case(...).slots)
+result = orch.run_generate(
+    case_id="Characterize_UpdateOrderStatus_Default",
+    method_context="<code fragment injected by the caller>",
+    slots=row.slots,
+    validator=None,   # optional: callable(values) -> list[Failure] from downstream checks
+)
+result.values             # {"T_ORDER.STATUS_CD": "P", ...}
+result.attempts           # 1 = first pass
+result.template_version   # ties eval numbers to templates/generate.md version
+
+# patch loop: replace exactly one field, deterministically applied in Python
+patch = orch.run_patch(case_id, dict(result.values),
+                       failure_detail="STATUS_CD mismatch vs golden master",
+                       allowed_fields={s.name for s in row.slots})
+from orchestrator import apply_patch
+new_values = apply_patch(dict(result.values), patch)
+```
+
+Tests use `FakeClient([...])` (queued responses, records prompts) — no network.
+End-to-end walkthrough: `docs/USAGE.md`; one-shot smoke: `scripts/e2e_smoke.py`.
+
 ## Modules
 
 | module | responsibility | design decision it enforces |
