@@ -64,6 +64,18 @@ anchors:            # 呼叫圖起點,「不用齊全」是特性:漏的靠 clos
 - **gRPC 暫不測**(2026-08-05 使用者裁定)→ 缺口 3 縮為 HTTP only,
   `.proto` 問題消失。gRPC 標 future work。
 
+## 執行拓撲(2026-08-05 裁定)
+
+- 查證:ARTF 三種 runner provider(shell_command / vm_runtime / external_runner)
+  在 0.2.7 全為 **contract_only**(support matrix 明寫;Java 端無真執行)——
+  HANDOFF §4「執行模型」假設框架跑 .exe,原本不成立。
+- 裁定:**使用者正在 ARTF 內實作 shell_command runtime**(框架是使用者的)。
+  CaseSmith 不做兩段式指揮 workaround。
+- CaseSmith 側先備齊:假 SUT(`sut/FakeSut.java`,Java+jcc 替身;真 SUT 是
+  VB .exe 在公司側)、renderer 的 shell_command target(照契約離線先行)。
+- Golden master 流程(runtime 落地後):seed → 框架跑 SUT → 從 db_query
+  evidence(sample_rows ≤5)抓現況 → 以觀測值重生 verify SQL。
+
 ## 待使用者釐清
 
 - 跨 schema 有沒有 FK(影響閉包要不要跨 schema 走)?
