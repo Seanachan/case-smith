@@ -1,6 +1,10 @@
 # CaseSmith 操作 SOP
 
 從 VB.NET 原始碼到 ARTF 可執行 test bundle 的完整流程。
+
+> **ARTF** = Auto Regression Test Framework,即目標測試框架
+> https://github.com/Seanachan/Auto_Regression_Test_Framework(Java/Spring Boot)。
+> CaseSmith 產生的 bundle 就是餵給它跑的。契約查證報告見 `docs/ARTF_CONTRACT.md`。
 每一步都可獨立跑;沒有真專案/真 schema 時,全流程可用 example 假件走通(§5 一鍵版)。
 
 ```
