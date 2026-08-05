@@ -1,5 +1,6 @@
 """CaseSmith 總指揮 CLI:spec.json + schema.json → ARTF bundle,一條指令。
 
+單方法模式:
     uv run python -m pipeline.cli \
         --spec   extractors/spec_card.example.json \
         --schema schema/schema.example.json \
@@ -8,13 +9,26 @@
         --model  opencode/big-pickle \
         --out    out/demo
 
+block 模式(--method 換成 --block,其餘同):
+    uv run python -m pipeline.cli --spec ... --schema ... \
+        --block blocks/settlement.yaml --out out/settlement
+
+    # block.yaml 形狀(見 docs/REQ_BLOCK_TRACING.md):
+    #   block_id: OrderSettlement
+    #   description: >  自然語言行為描述(給人;也當語意 context 注入)
+    #   anchors:
+    #     - function: SettleOrder
+    #     - file: Billing/Settle.vb
+    #       lines: 120-180
+
     # 只列出 spec 裡有哪些方法可選:
     uv run python -m pipeline.cli --spec ... --schema ... --list
 
 串接順序(全部確定性,模型只在 ④ 填值):
-① 讀 spec card 挑方法 → ② condition_columns 過濾成 ask_model 白名單
-(排除 PK/FK——ID 歸 planner 配,不問模型)→ ③ planner 出 SeedPlan+slots
-→ ④ orchestrator 問模型 → ⑤ renderer 出 bundle → ⑥ 契約檢查。
+① 挑方法 / block 錨點沿 calls 閉包 → ② condition_columns 過濾成 ask_model
+白名單(排除 PK/FK——ID 歸 planner 配,不問模型)→ ③ planner 出
+SeedPlan+slots → ④ orchestrator 問模型 → ⑤ renderer 出 bundle → ⑥ 契約檢查。
+block 模式另落地 coverage.md(對照 block 描述找落差,REQ 的驗收機制)。
 """
 
 from __future__ import annotations
@@ -29,6 +43,7 @@ import yaml
 from orchestrator.client import FakeClient, OpencodeClient
 from orchestrator.core import GenerationFailed, Orchestrator
 from orchestrator.metrics import MetricsLog
+from pipeline.block_spec import BlockSpec, build_block_spec, coverage_report
 from pipeline.contract_check import check_suite_manifest, check_test_case
 from pipeline.render_artifacts import (
     CaseBundleSpec,
@@ -52,10 +67,10 @@ def _pick_method(spec_card: dict, name: str) -> dict:
     return matches[0]
 
 
-def _ask_model_whitelist(method: dict, schema: Schema) -> list:
+def _filter_ask_model(condition_columns, schema: Schema) -> list:
     """condition_columns → ask_model:排除 PK/FK(ID 歸 planner),排除 schema 查無的欄。"""
     whitelist = []
-    for key in method.get("condition_columns", []):
+    for key in condition_columns:
         table_name, _, col_name = key.partition(".")
         table = schema.tables.get(table_name)
         if table is None or not any(c.name == col_name for c in table.columns):
@@ -85,12 +100,29 @@ def _method_context(method: dict) -> str:
     return "\n".join(lines)
 
 
+def _block_context(block_def: dict, block: BlockSpec) -> str:
+    """block 描述(人寫的語意)+ 閉包事實,注入模型當 context。"""
+    tables = "; ".join(
+        f"{t} ({'/'.join(sorted(ops))})" for t, ops in sorted(block.tables.items())
+    )
+    lines = [f"Block: {block_def['block_id']}"]
+    desc = (block_def.get("description") or "").strip()
+    if desc:
+        lines.append(desc)
+    lines.append(f"Methods in scope: {len(block.method_ids)}")
+    lines.append(f"Tables touched: {tables or 'none'}")
+    if block.condition_columns:
+        lines.append("Condition columns: " + ", ".join(block.condition_columns))
+    return "\n".join(lines)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="casesmith", description=__doc__)
     ap.add_argument("--spec", required=True, help="extractor 產的 spec card JSON")
     ap.add_argument("--schema", required=True, help="schema JSON(契約形狀見 schema.example.json)")
     ap.add_argument("--domain", help="domain config YAML(選填,空 config 也能跑)")
-    ap.add_argument("--method", help="方法名或完整 id")
+    ap.add_argument("--method", help="方法名或完整 id(與 --block 二選一)")
+    ap.add_argument("--block", help="block.yaml 路徑(錨點+描述;與 --method 二選一)")
     ap.add_argument("--model", default="opencode/big-pickle", help="opencode 的 provider/model")
     ap.add_argument("--out", default="out/casesmith", help="bundle 輸出目錄")
     ap.add_argument("--list", action="store_true", help="列出 spec 裡的方法後結束")
@@ -105,27 +137,53 @@ def main(argv=None) -> int:
             cols = ", ".join(m.get("condition_columns", [])) or "-"
             print(f"{m['signature']['name']:30s} {m['id']}  [{cols}]")
         return 0
-    if not args.method:
-        ap.error("--method 必填(或用 --list 看可選)")
+    if bool(args.method) == bool(args.block):
+        ap.error("--method 與 --block 恰選其一(或用 --list)")
 
     domain = DomainConfig.from_yaml(args.domain) if args.domain else DomainConfig()
-    method = _pick_method(spec_card, args.method)
-    tables = [t["name"] for t in method.get("tables", [])]
-    if not tables:
-        raise SystemExit(f"{args.method}: spec 裡沒有觸及任何表,無 seed 可產")
-    ask_model = _ask_model_whitelist(method, schema)
-    case_id = f"Characterize_{method['signature']['name']}_Default"
-    print(f"[casesmith] method={method['id']}")
-    print(f"[casesmith] tables={tables} ask_model={ask_model or '(無——全部欄位由 planner 填)'}")
-
-    # ③ planner
-    planner = SeedPlanner(schema, domain, ask_model=ask_model)
-    base = planner.plan_base(tables)
-    case_row = planner.plan_case(tables[0], case_id)
-
-    # ④ orchestrator(有 slot 才問模型)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.block:
+        block_def = yaml.safe_load(Path(args.block).read_text(encoding="utf-8"))
+        block = build_block_spec(spec_card, block_def["block_id"], block_def["anchors"])
+        if block.anchor_misses:
+            print(f"[casesmith] !! 錨點沒中(檢查 block.yaml):{block.anchor_misses}")
+        if not block.method_ids:
+            raise SystemExit("block 閉包為空:所有錨點都沒中")
+        known = [t for t in sorted(block.tables) if t in schema.tables]
+        unknown = sorted(set(block.tables) - set(known))
+        if unknown:
+            print(f"[casesmith] !! block 觸及但 schema 查無的表(不進 seed):{unknown}")
+        if not known:
+            raise SystemExit("block 觸及的表在 schema 全查無,無 seed 可產")
+        (out_dir / "coverage.md").write_text(coverage_report(block), encoding="utf-8")
+        print(f"[casesmith] block={block_def['block_id']} "
+              f"methods={len(block.method_ids)} coverage → {out_dir / 'coverage.md'}")
+        tables = known
+        ask_model = _filter_ask_model(block.condition_columns, schema)
+        name = block_def["block_id"]
+        context = _block_context(block_def, block)
+    else:
+        method = _pick_method(spec_card, args.method)
+        tables = [t["name"] for t in method.get("tables", [])]
+        if not tables:
+            raise SystemExit(f"{args.method}: spec 裡沒有觸及任何表,無 seed 可產")
+        ask_model = _filter_ask_model(method.get("condition_columns", []), schema)
+        name = method["signature"]["name"]
+        context = _method_context(method)
+        print(f"[casesmith] method={method['id']}")
+
+    case_id = f"Characterize_{name}_Default"
+    print(f"[casesmith] tables={tables} ask_model={ask_model or '(無——全部欄位由 planner 填)'}")
+
+    # ③ planner。case 主表:第一個 ask_model 欄位所屬表,否則表清單第一個
+    planner = SeedPlanner(schema, domain, ask_model=ask_model)
+    base = planner.plan_base(tables)
+    primary = ask_model[0].partition(".")[0] if ask_model else tables[0]
+    case_row = planner.plan_case(primary, case_id)
+
+    # ④ orchestrator(有 slot 才問模型)
     values: dict = {}
     if case_row.slots:
         if args.fake is not None:
@@ -134,7 +192,7 @@ def main(argv=None) -> int:
             client = OpencodeClient(model=args.model)
         orch = Orchestrator(client, metrics=MetricsLog(out_dir / "runs.jsonl"))
         try:
-            result = orch.run_generate(case_id, _method_context(method), case_row.slots)
+            result = orch.run_generate(case_id, context, case_row.slots)
         except GenerationFailed as exc:
             print(f"[casesmith] 生成失敗:{exc}")
             for i, failure in enumerate(exc.attempts, 1):
@@ -148,8 +206,8 @@ def main(argv=None) -> int:
     # ⑤ renderer + ⑥ 契約檢查
     bundle_spec = CaseBundleSpec(
         case_id=case_id,
-        title=f"Characterize {method['signature']['name']} current behaviour",
-        suite_id=f"CASESMITH-{method['signature']['name'].upper()}",
+        title=f"Characterize {name} current behaviour",
+        suite_id=f"CASESMITH-{name.upper()}",
     )
     files = render_bundle(
         bundle_spec, schema, base, case_row, values,

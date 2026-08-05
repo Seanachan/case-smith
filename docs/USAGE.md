@@ -48,7 +48,8 @@ uv run python -m pipeline.cli \
 |---|---|---|---|
 | `--spec` | ✔ | extractor 產的 spec card JSON **路徑** | 步驟①的 `--output`;沒真專案 → `extractors/spec_card.example.json` |
 | `--schema` | ✔ | DB schema JSON **路徑** | 步驟②的 ddl2json 輸出;沒真 schema → `schema/schema.example.json` |
-| `--method` | ✔ | 要產測試的**方法名**(如 `GetActiveCustomer`) | 先跑 `--list` 看 spec 裡有哪些;同名衝突時改用完整 id |
+| `--method` | 二選一 | 要產測試的**方法名**(如 `GetActiveCustomer`) | 先跑 `--list` 看 spec 裡有哪些;同名衝突時改用完整 id |
+| `--block` | 二選一 | **block.yaml 路徑**(block_id + description + anchors) | 從 block markdown 轉出(見 `docs/REQ_BLOCK_TRACING.md`);錨點沿 `calls` 閉包自動找出全部表/欄,另落地 `coverage.md` 供人工對照描述 |
 | `--domain` | 選 | domain config YAML 路徑 | 拿 `domain/domain.example.yaml` 改;控制欄位填充值 + `ignore_in_snapshot`。不給 = 空 config,型別預設值 |
 | `--model` | 選 | opencode 的 `provider/model` 字串 | `opencode models` 列出可用名;預設 `opencode/big-pickle` |
 | `--out` | 選 | 輸出**目錄** | 會產 `bundle/`(9 檔)+ `runs.jsonl`(量測);預設 `out/casesmith` |
@@ -224,6 +225,21 @@ uv run python -m unittest discover -s orchestrator/tests -t .  # orchestrator
 cd extractors/dotnet && dotnet test                            # extractor
 ```
 
+## ⑧ Eval 報告:量測 → v1→vN 曲線(報告要交的東西)
+
+```bash
+uv run python -m pipeline.eval_report \
+    --runs    out/*/runs.jsonl \
+    --results run1/result.json run2/result.json run3/result.json \
+    --out     eval_report.md
+```
+
+- `--runs`:orchestrator 的量測 JSONL(可多份)→ 按 **template 版本**分組的
+  first-pass rate + 錯誤分類表(v1→vN 改進曲線的數據源)。
+- `--results`:ARTF 的 result.json(可多份)→ 執行層 passed/failed/blocked;
+  **≥2 份自動附 flaky gate 判定**(stable/flaky/undetermined/missing)。
+- 兩種輸入至少給一種。
+
 ## 常見錯誤對照
 
 | 症狀 | 原因 | 修法 |
@@ -232,3 +248,4 @@ cd extractors/dotnet && dotnet test                            # extractor
 | `PlannerBugError` | fixture SQL 在 DB 執行失敗 | 修 planner/schema,**retry 無效** |
 | 契約違規 `prohibited section` | renderer 產出帶 legacy 欄位 | 回報 bug——renderer 硬編碼結構,不該發生 |
 | `opencode exited 1` | CLI 未登入/模型名錯 | `opencode models` 列可用名,格式 `provider/model` |
+| block 錨點沒中 / 表查無 | block.yaml 錨點打錯、schema 不含該表 | CLI 會明講(不吞);對照 `coverage.md` 修 block.yaml |
