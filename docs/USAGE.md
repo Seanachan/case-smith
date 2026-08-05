@@ -159,14 +159,37 @@ java -jar target/spec-driven-auto-regression-0.2.7.jar \
 - 結果:`result.json` 的 `test_results[].status`(passed/failed/blocked)= eval 通過率來源;
   亂序多跑後丟給 `uv run python -m pipeline.flaky_gate <各次 result.json>` 篩 flaky。
 
-### 實測狀態(2026-08-05,本機 ARTF 0.2.7 實跑)
+### 實測狀態(2026-08-05,本機 ARTF 0.2.7 + 真 DB2 全綠)
 
-- `validate`:CaseSmith bundle **passed,findings 零**(契約假設全數成立)。
-- `run`:一路到 provider 層,卡在兩個環境前置(非 bundle 問題):
-  1. `JDBC_CONNECTION` 環境變數(DB 連線字串)
-  2. JDBC driver jar——框架不帶 driver,`doctor drivers` 確認 oracle/db2 皆缺;
-     用 `--driver-path <jar>` / `REGRESS_DRIVER_PATH` / `usage-kit/drivers/` 提供。
-- 真跑全綠還需要:一個 DB2(Docker)或相容 DB + 對應 driver jar。
+- `validate`:CaseSmith bundle **passed,findings 零**。
+- `run`:**3 次全 passed**(真 DB2:seed → query → db_record_exists → cleanup;
+  cleanup 驗證過——跑完 ID 區間列歸零)。
+- flaky gate 吃 3 份真 result.json:`STABLE passed, kept=1`。
+
+可重現步驟(Apple Silicon 要 `--platform linux/amd64` 走 Rosetta):
+
+```bash
+# 1. DB2(首次 init 約 5-10 分,等 log 出現 "Setup has completed")
+docker run -d --platform linux/amd64 --name casesmith-db2 --privileged \
+  -e LICENSE=accept -e DB2INST1_PASSWORD=casesmith -e DBNAME=TESTDB \
+  -p 50000:50000 icr.io/db2_community/db2
+
+# 2. 灌表(DDL 含 APP schema 前綴與 FK 環的 ALTER 收尾)
+docker cp schema/example.ddl casesmith-db2:/tmp/
+docker exec casesmith-db2 su - db2inst1 -c \
+  "db2 connect to TESTDB; db2 -tf /tmp/example.ddl; db2 terminate"
+
+# 3. driver(Maven Central 的 com.ibm.db2:jcc → ARTF 的 drivers/db2/jcc.jar)
+# 4. 跑
+export JDBC_CONNECTION='jdbc:db2://localhost:50000/TESTDB:user=db2inst1;password=casesmith;currentSchema=APP;'
+java -jar target/spec-driven-auto-regression-0.2.7.jar run \
+  --suite <case-smith>/out/<run>/bundle/suite_manifest.yaml \
+  --profile local_fake --driver-path drivers/db2/jcc.jar
+```
+
+已知 workaround:`currentSchema=APP` 是因為 renderer 目前吐**裸表名**
+(SQLCODE=-204 教訓);正解 = SQL 加 `SCHEMA.TABLE` 前綴,排在待辦
+(見 REQ_BLOCK_TRACING.md 缺口 2,多 schema 時必修)。
 
 ## 測試(改完任何元件跑這兩條)
 
