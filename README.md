@@ -24,6 +24,8 @@ pipeline/        Python：
                    cli.py               conductor：spec+schema → bundle，一條指令跑完
                    flaky_gate.py        亂序多輪結果判定器（stable／flaky／blocked／missing）
                    trust_gate.py        亂序洗牌器（確定性 seed，判定另外交給 flaky_gate）
+                   block_spec.py        block 錨點 → calls 呼叫圖閉包 → 聚合 + coverage 報告
+                   eval_report.py       量測彙整 → v1→vN markdown 報告（模型層＋執行層＋flaky）
 orchestrator/    Python：prompt 組裝／opencode CLI transport／失敗分類重試／量測
 domain/          domain.yaml——跨專案時唯一要改的地方（真實檔案不進版控）
 schema/          schema.json 契約 + DDL 範例（真實檔案不進版控）
@@ -37,12 +39,12 @@ docs/            架構、介面契約、交接文件（索引見下）
 
 ## Quickstart
 
-三條測試指令（改完任何元件都跑這三條；數字是 2026-08-05 的基準）：
+三條測試指令（改完任何元件都跑這三條；數字是 2026-08-06 的基準）：
 
 ```bash
-uv run pytest pipeline/ -q                                     # 86 passed
+uv run pytest pipeline/ -q                                     # 104 passed
 uv run python -m unittest discover -s orchestrator/tests -t .  # 25 OK
-cd extractors/dotnet && dotnet test                             # 22（Extractor 14 + Mutator 8）
+cd extractors/dotnet && dotnet test                             # 25（Extractor 17 + Mutator 8）
 ```
 
 一鍵端到端 smoke（全假件，spec+schema → ARTF bundle）：
@@ -93,6 +95,8 @@ uv run python scripts/e2e_smoke.py --model opencode/big-pickle --out out/run1
   時要涵蓋的欄位檢核表
 - [`docs/CORPORATE_SETUP.md`](./docs/CORPORATE_SETUP.md)——把 repo 搬到公司側真實環境時的
   架設步驟，目標是重現本機已驗證的測試結果
+- [`docs/CORPORATE_RUNBOOK.md`](./docs/CORPORATE_RUNBOOK.md)——公司現場逐日操作清單：
+  出發前檢核、Day 1-2 順序、帶出前去識別關卡、預期出事點對照表
 
 ## 注意事項
 
