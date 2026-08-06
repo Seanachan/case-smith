@@ -27,10 +27,12 @@
 `./scripts/make_offline_kit.sh` → `out/offline_kit/`(約 280MB:wheels +
 win-x64 self-contained 發布檔 + ARTF jar + jcc),走 IT 審核通道送入,
 安裝步驟在包內 `KIT_README.md`。
-- [ ] **確認公司內的模型管道**(最大未知數):opencode 免費模型要外網。
-  內網不通的話選項:(a) 內部 ollama/vLLM endpoint → `OpencodeClient` 換
-  provider 字串或 opencode 配 local provider;(b) 都沒有 → 寫新 `ModelClient`
-  (protocol 只有一個 `generate(prompt) -> str` 方法,半小時的事)
+- [ ] **模型管道**(2026-08-06 更新:公司內有 **27B** 模型,7–8B 底線設計向上相容)。
+  出發前要問到的是**呼叫介面**:
+  - OpenAI 相容 API → opencode 配 custom provider,或自寫 ModelClient 打 endpoint
+  - 其他形式(內部 SDK/CLI)→ 寫新 `ModelClient`(protocol 只有
+    `generate(prompt) -> str` 一個方法,半小時的事)
+  - 要到手的資訊:endpoint URL、認證方式、模型名字串
 - [ ] uv / dotnet SDK 9 / Java 17 安裝檔(內網可能不能線上裝)
 
 ## Day 1:環境 + 材料檢查
