@@ -4,14 +4,29 @@
 環境架設(裝工具、擺目錄)先看 [`CORPORATE_SETUP.md`](./CORPORATE_SETUP.md);本檔管**操作順序**。
 原則:**程式碼、schema、表名、連線字串不出公司;帶出來的只有去識別的量測數據與教訓。**
 
-## 出發前(在家做完)
+## 進場方式(2026-08-06 定案:公司有內部 NuGet/Maven/PyPI mirror)
 
-- [ ] **跑 `./scripts/make_offline_kit.sh`** → `out/offline_kit/`(約 280MB)整包帶走:
-  repo(git bundle + zip)、Python wheels(win/linux 雙平台,公司**免外網免 uv**)、
-  Extractor/Mutator win-x64 發布檔(**免 .NET SDK/NuGet**)、ARTF jar + jcc driver。
-  公司側安裝步驟在包內 `KIT_README.md`
-- [ ] (kit 已涵蓋,以下僅為單項備忘)ARTF jar:公司內網不能 `./mvnw` 抓依賴
-- [ ] jcc driver jar:內網抓不了 Maven Central
+**Mirror 模式(首選)**——只有「原始碼」要過邊界,依賴全走內部 mirror:
+
+- 要進場的東西只有兩個 zip(合計 < 2MB,任何合規小通道都進得去):
+  `git archive -o casesmith-src.zip main`(本 repo)+ ARTF repo 同樣打包
+- 公司側還原依賴:
+  ```bash
+  # Python(pip 指向內部 PyPI mirror;公司通常已預設,沒有就 --index-url <內部URL>)
+  python -m venv .venv && <啟用> && pip install pyyaml pytest jsonschema
+  # Extractor(內部 NuGet mirror;需 .NET SDK——公司沒有就走下面的 fallback kit)
+  cd extractors/dotnet && dotnet build && dotnet test
+  # ARTF(內部 Maven mirror;settings.xml 指向公司 Nexus/Artifactory)
+  ./mvnw -DskipTests package
+  # jcc driver:內部 mirror 抓 com.ibm.db2:jcc
+  ```
+- 版本以 repo 內 `uv export --no-hashes --format requirements-txt` 輸出為準,
+  mirror 缺哪個版本就記下來回報,不硬換版本。
+
+**Fallback:離線 kit**(mirror 缺件、或現場沒有 .NET 9 SDK 時)——
+`./scripts/make_offline_kit.sh` → `out/offline_kit/`(約 280MB:wheels +
+win-x64 self-contained 發布檔 + ARTF jar + jcc),走 IT 審核通道送入,
+安裝步驟在包內 `KIT_README.md`。
 - [ ] **確認公司內的模型管道**(最大未知數):opencode 免費模型要外網。
   內網不通的話選項:(a) 內部 ollama/vLLM endpoint → `OpencodeClient` 換
   provider 字串或 opencode 配 local provider;(b) 都沒有 → 寫新 `ModelClient`
