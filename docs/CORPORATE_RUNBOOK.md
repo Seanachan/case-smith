@@ -6,8 +6,12 @@
 
 ## 出發前(在家做完)
 
-- [ ] case-smith repo 拉到最新;ARTF repo + build 好的 jar 一起帶(公司內網可能不能 `./mvnw` 抓依賴)
-- [ ] jcc driver jar(`drivers/db2/jcc.jar`)帶著——內網抓不了 Maven Central
+- [ ] **跑 `./scripts/make_offline_kit.sh`** → `out/offline_kit/`(約 280MB)整包帶走:
+  repo(git bundle + zip)、Python wheels(win/linux 雙平台,公司**免外網免 uv**)、
+  Extractor/Mutator win-x64 發布檔(**免 .NET SDK/NuGet**)、ARTF jar + jcc driver。
+  公司側安裝步驟在包內 `KIT_README.md`
+- [ ] (kit 已涵蓋,以下僅為單項備忘)ARTF jar:公司內網不能 `./mvnw` 抓依賴
+- [ ] jcc driver jar:內網抓不了 Maven Central
 - [ ] **確認公司內的模型管道**(最大未知數):opencode 免費模型要外網。
   內網不通的話選項:(a) 內部 ollama/vLLM endpoint → `OpencodeClient` 換
   provider 字串或 opencode 配 local provider;(b) 都沒有 → 寫新 `ModelClient`
